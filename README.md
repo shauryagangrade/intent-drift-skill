@@ -1,0 +1,184 @@
+# intent-drift
+
+A skill that uses the Intent Alignment Engine to analyze intent drift in AI-assisted development.
+
+## 🎯 Purpose
+
+Detects when AI coding agents begin solving a different problem than originally requested by monitoring alignment between:
+- Original goals
+- Current execution plans  
+- File changes and behavior
+
+## 🛠️ Features
+
+- Evidence-based drift detection using multiple providers
+- Explainable assessments with detailed evidence tracking
+- Real-time monitoring and timeline tracking
+- Pluggable architecture for custom evidence providers
+- Type-safe with comprehensive validation
+- Exportable reports in multiple formats
+
+## 🚀 Quick Start
+
+```bash
+# Import into any Claude Code agent
+cd ~/.claude/skills/intent-drift
+./analyze-code
+```
+
+### Usage Examples
+
+```bash
+# Basic usage
+/intent-drift
+--original-goal "Reduce application memory usage"
+--current-plan "Optimize startup performance"
+--context "Edited: main.py, startup.py"
+
+# With auto-collection of git context
+/intent-drift
+--original-goal "Improve response time"
+--current-plan "Add database indexing"
+--auto-context
+```
+
+## 📊 Analysis Output
+
+```
+Intent Alignment Report
+
+Overall Alignment: 68%
+Status: Moderate Drift
+Confidence: 89%
+
+Evidence:
+✓ Goal partially overlaps
+✓ Constraints remain satisfied
+⚠ Edited files primarily affect startup logic
+⚠ Implementation no longer targets memory allocation
+
+Risk: High - additional work unlikely to improve memory usage
+
+Recommendation: Pause and confirm alignment before continuing
+```
+
+## 🏗️ Architecture
+
+```
+intent-drift/
+├── __init__.py              # Skill entrypoint
+├── analyzer.py              # Core analysis logic
+├── providers/               # Evidence providers
+├── exporters/               # Report exporters (text, markdown, json)
+├── config/                  # Configuration defaults
+├── docs/                    # Usage documentation
+└── examples/                # Usage examples
+```
+
+## 🔧 Configuration
+
+### Required Configuration
+
+```yaml
+# config/defaults.yaml
+analysis:
+  threshold: 75              # Minimum alignment score (%)
+  confidence: 80            # Minimum confidence (%)
+  providers:
+    enabled:               # Which providers to use
+      - goal_provider
+      - constraint_provider
+      - execution_provider
+      - scope_provider
+  
+  evidence_providers:
+    goal_provider:
+      weight: 0.25
+      thresholds:
+        match_score: 80
+        drift_score: 60
+    
+    constraint_provider:
+      weight: 0.20
+      thresholds:
+        violation_score: 90
+        partial_compliance: 70
+```
+
+### Customization
+
+```bash
+# Edit config file
+nano ~/.claude/skills/intent-drift/config/user.yaml
+
+# Reset to defaults
+./analyze-code --reset-config
+```
+
+## 📁 Integration
+
+### With Git Repos
+
+Automatically analyzes:
+- Git diffs between commit points
+- File modification patterns
+- Commit message trends
+- Branch divergence
+
+### With Codebase Features
+
+Analyzes:
+- Type checking evidence
+- Build system outputs
+- Test coverage changes
+- Performance metrics
+
+## 🔌 Extending the Skill
+
+### Adding New Evidence Providers
+
+```python
+# New providers go in providers/
+class CustomEvidenceProvider:
+    def __init__(self):
+        self.name = "custom_provider"
+        self.weight = 0.15
+    
+    def collect(self, context):
+        # Implementation
+        return [Evidence(...)]
+```
+
+### Custom Export Formats
+
+```python
+# New exporters go in exporters/
+class CsvExporter:
+    def export(self, report, output_path):
+        # CSV implementation
+        pass
+```
+
+## 📚 Documentation
+
+See the `docs/` directory for:
+- [Architecture Overview](docs/architecture.md)
+- [Evidence Providers](docs/providers.md)
+- [Configuration Reference](docs/config.md)
+- [Customization Guide](docs/customizing.md)
+- [API Reference](docs/api.md)
+
+## 🤝 Contributing
+
+See `CONTRIBUTING.md` for:
+- Code style guidelines
+- Testing requirements
+- Documentation standards
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+Based on the Intent Alignment Engine by Shaurya Gangrade.
