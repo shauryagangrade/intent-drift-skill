@@ -18,7 +18,7 @@ get started.
 
 3. **Link to your Claude Code skills directory**:
    ```bash
-   ln -s ~/.claude/skills/intent-drift
+   ln -s "$PWD" ~/.claude/skills/intent-drift
    ```
 
 ## Code Style
