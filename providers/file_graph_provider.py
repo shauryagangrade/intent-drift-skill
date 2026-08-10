@@ -1,5 +1,6 @@
 """Evidence provider that analyzes file graph relationships."""
 
+from pathlib import Path
 from typing import List, Dict, Any
 from intent_alignment.models import Evidence
 from .base import EvidenceProvider
