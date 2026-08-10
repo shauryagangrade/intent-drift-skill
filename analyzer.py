@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-# Add the intent-alignment-engine to the path
-engine_path = Path.home() / "Projects" / "intent-drift" / "intent-alignment-engine"
+# Add the intent-drift to the path
+engine_path = Path.home() / "Projects" / "intent-drift" / "intent-drift"
 sys.path.insert(0, str(engine_path))
 
 from intent_alignment.models import AlignmentContext, AlignmentReport

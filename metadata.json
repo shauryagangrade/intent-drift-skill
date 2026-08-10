@@ -46,7 +46,7 @@
   "dependencies": {
     "python": ">=3.10",
     "packages": [
-      "intent-alignment-engine>=0.1.0"
+      "intent-drift>=0.1.0"
     ]
   },
   "usage": [

@@ -1,4 +1,4 @@
-intent-alignment-engine>=0.1.0
+intent-drift>=0.1.0
 PyYAML>=6.0
 click>=8.1.0
 python-dateutil>=2.8.0

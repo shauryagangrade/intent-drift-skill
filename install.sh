@@ -23,6 +23,13 @@ fi
 # Install Python dependencies (best-effort)
 if command -v pip >/dev/null 2>&1; then
   pip install -r "${SRC}/requirements.txt" || echo "pip install failed; deps may already be present"
+
+  # Install intent-drift if not already installed
+  if ! pip show intent-drift >/dev/null 2>&1; then
+    pip install "intent-drift>=0.1.0"
+  else
+    echo "intent-drift already installed"
+  fi
 else
   echo "pip not found; skipping dependency install"
 fi

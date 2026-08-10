@@ -36,6 +36,6 @@ it in `IntentDriftAnalyzer.export_report`.
 ## Point at a different engine
 The engine import path is set in `analyzer.py` and `__init__.py`:
 ```python
-ENGINE_PATH = Path.home() / "Projects" / "intent-drift" / "intent-alignment-engine"
+ENGINE_PATH = Path.home() / "Projects" / "intent-drift" / "intent-drift"
 ```
-Change this if your copy of `intent-alignment-engine` lives elsewhere.
+Change this if your copy of `intent-drift` lives elsewhere.

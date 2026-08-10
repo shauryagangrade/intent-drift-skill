@@ -64,6 +64,6 @@ confidence from the spread and diversity of evidence. `Status` bands:
 
 The skill is self-contained under `~/.claude/skills/intent-drift/`. It imports the
 Intent Alignment Engine from
-`~/Projects/intent-drift/intent-alignment-engine` (adjust in `analyzer.py` /
+`~/Projects/intent-drift/intent-drift` (adjust in `analyzer.py` /
 `__init__.py` if your engine lives elsewhere). `metadata.json` declares parameters and
 dependencies so any agent harness can discover and invoke it.

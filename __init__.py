@@ -4,14 +4,14 @@ A skill that analyzes intent drift in AI-assisted development using the
 Intent Alignment Engine.
 
 This package lives at ~/.claude/skills/intent-drift. It imports the
-Intent Alignment Engine from ~/Projects/intent-drift/intent-alignment-engine.
+Intent Alignment Engine from ~/Projects/intent-drift/intent-drift.
 """
 
 import sys
 from pathlib import Path
 
 # Add the engine to the import path so `intent_alignment` resolves.
-ENGINE_PATH = Path.home() / "Projects" / "intent-drift" / "intent-alignment-engine"
+ENGINE_PATH = Path.home() / "Projects" / "intent-drift" / "intent-drift"
 for _p in (ENGINE_PATH / "src", ENGINE_PATH):
     _sp = str(_p)
     if _sp not in sys.path:

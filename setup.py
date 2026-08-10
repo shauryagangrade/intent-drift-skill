@@ -9,7 +9,7 @@ setup(
     packages=find_packages(exclude=("tests", "tests.*")),
     python_requires=">=3.10",
     install_requires=[
-        "intent-alignment-engine>=0.1.0",
+        "intent-drift>=0.1.0",
         "PyYAML>=6.0",
         "click>=8.1.0",
     ],
