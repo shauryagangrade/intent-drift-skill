@@ -2,4 +2,4 @@
 
 from .collect_context import ContextCollector
 
-__all__ = ['ContextCollector']
+__all__ = ["ContextCollector"]

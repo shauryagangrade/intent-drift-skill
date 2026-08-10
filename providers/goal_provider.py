@@ -1,16 +1,20 @@
 """Evidence provider that analyzes goal alignment."""
 
-from typing import List, Dict, Any
+from typing import Any
+
 from intent_alignment.models import Evidence
+
 from .base import EvidenceProvider
+
+
 class GoalProvider(EvidenceProvider):
     """Analyzes alignment between original and current goals."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the goal provider."""
         super().__init__(name="goal_provider", weight=0.25)
 
-    def collect(self, context: Dict[str, Any]) -> List[Evidence]:
+    def collect(self, context: dict[str, Any]) -> list[Evidence]:
         """Collect evidence about goal alignment.
 
         Args:
@@ -19,14 +23,14 @@ class GoalProvider(EvidenceProvider):
         Returns:
             List of evidence items about goal alignment
         """
-        original_goal = context.get('original_goal', {})
-        current_plan = context.get('current_plan', {})
+        original_goal = context.get("original_goal", {})
+        current_plan = context.get("current_plan", {})
 
         evidence = []
 
         # Extract goal text
-        original_text = original_goal.get('text', '')
-        current_text = current_plan.get('text', '')
+        original_text = original_goal.get("text", "")
+        current_text = current_plan.get("text", "")
 
         # Calculate similarity based on keyword overlap
         original_keywords = set(original_text.lower().split())
@@ -38,7 +42,7 @@ class GoalProvider(EvidenceProvider):
                     source=self.name,
                     value=0.0,
                     confidence=0.1,
-                    details="Insufficient goal text for analysis"
+                    details="Insufficient goal text for analysis",
                 )
             )
             return evidence
@@ -71,12 +75,12 @@ class GoalProvider(EvidenceProvider):
                 source=self.name,
                 value=similarity_score * 100,
                 confidence=confidence,
-                details=f"Original goal and current plan are {status} (similarity: {similarity_score:.1%})"
+                details=f"Original goal and current plan are {status} (similarity: {similarity_score:.1%})",
             )
         )
 
         # Add constraint-based evidence if constraints exist
-        original_constraints = original_goal.get('constraints', [])
+        original_constraints = original_goal.get("constraints", [])
         if original_constraints:
             # For now, assume constraints are being followed
             evidence.append(
@@ -84,7 +88,7 @@ class GoalProvider(EvidenceProvider):
                     source=self.name,
                     value=90.0,
                     confidence=0.8,
-                    details=f"All {len(original_constraints)} original constraints identified in current plan"
+                    details=f"All {len(original_constraints)} original constraints identified in current plan",
                 )
             )
 

@@ -1,16 +1,20 @@
 """Evidence provider that analyzes scope alignment."""
 
-from typing import List, Dict, Any
+from typing import Any
+
 from intent_alignment.models import Evidence
+
 from .base import EvidenceProvider
+
+
 class ScopeProvider(EvidenceProvider):
     """Analyzes scope alignment and creep."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the scope provider."""
         super().__init__(name="scope_provider", weight=0.15)
 
-    def collect(self, context: Dict[str, Any]) -> List[Evidence]:
+    def collect(self, context: dict[str, Any]) -> list[Evidence]:
         """Collect evidence about scope alignment.
 
         Args:
@@ -19,17 +23,16 @@ class ScopeProvider(EvidenceProvider):
         Returns:
             List of evidence items about scope alignment
         """
-        original_goal = context.get('original_goal', {})
-        current_plan = context.get('current_plan', {})
-        execution_context = context.get('execution_context', {})
+        original_goal = context.get("original_goal", {})
+        current_plan = context.get("current_plan", {})
+        execution_context = context.get("execution_context", {})
 
         evidence = []
 
         # Extract scope indicators
-        original_text = original_goal.get('text', '')
-        current_text = current_plan.get('text', '')
-        edited_files = execution_context.get('edited_files', [])
-        recent_commands = execution_context.get('recent_commands', [])
+        original_text = original_goal.get("text", "")
+        current_text = current_plan.get("text", "")
+        edited_files = execution_context.get("edited_files", [])
 
         # Analyze scope creep
         # Count unique concepts/areas
@@ -46,7 +49,7 @@ class ScopeProvider(EvidenceProvider):
                     source=self.name,
                     value=max(0, 100 - len(new_concepts) * 15),
                     confidence=0.8,
-                    details=f"Scope expansion detected: {len(new_concepts)} new concepts introduced beyond original scope"
+                    details=f"Scope expansion detected: {len(new_concepts)} new concepts introduced beyond original scope",
                 )
             )
         elif len(new_concepts) > 0:
@@ -55,7 +58,7 @@ class ScopeProvider(EvidenceProvider):
                     source=self.name,
                     value=80.0,
                     confidence=0.7,
-                    details=f"Minor scope expansion: {len(new_concepts)} additional concepts introduced"
+                    details=f"Minor scope expansion: {len(new_concepts)} additional concepts introduced",
                 )
             )
         else:
@@ -64,7 +67,7 @@ class ScopeProvider(EvidenceProvider):
                     source=self.name,
                     value=95.0,
                     confidence=0.9,
-                    details="No scope expansion detected; work remains within original boundaries"
+                    details="No scope expansion detected; work remains within original boundaries",
                 )
             )
 
@@ -75,7 +78,7 @@ class ScopeProvider(EvidenceProvider):
                     source=self.name,
                     value=max(0, 100 - len(missing_concepts) * 10),
                     confidence=0.7,
-                    details=f"Significant scope reduction: {len(missing_concepts)} original concepts not addressed"
+                    details=f"Significant scope reduction: {len(missing_concepts)} original concepts not addressed",
                 )
             )
         elif len(missing_concepts) > 0:
@@ -84,7 +87,7 @@ class ScopeProvider(EvidenceProvider):
                     source=self.name,
                     value=75.0,
                     confidence=0.7,
-                    details=f"Minor scope reduction: {len(missing_concepts)} original concepts not currently addressed"
+                    details=f"Minor scope reduction: {len(missing_concepts)} original concepts not currently addressed",
                 )
             )
 
@@ -97,7 +100,7 @@ class ScopeProvider(EvidenceProvider):
                         source=self.name,
                         value=max(0, 100 - file_count * 3),
                         confidence=0.6,
-                        details=f"Large number of files modified ({file_count}), possible scope creep"
+                        details=f"Large number of files modified ({file_count}), possible scope creep",
                     )
                 )
             elif file_count > 5:
@@ -106,7 +109,7 @@ class ScopeProvider(EvidenceProvider):
                         source=self.name,
                         value=80.0,
                         confidence=0.7,
-                        details=f"Moderate file modifications ({file_count} files)"
+                        details=f"Moderate file modifications ({file_count} files)",
                     )
                 )
             else:
@@ -115,7 +118,7 @@ class ScopeProvider(EvidenceProvider):
                         source=self.name,
                         value=95.0,
                         confidence=0.8,
-                        details=f"Focused file changes ({file_count} files)"
+                        details=f"Focused file changes ({file_count} files)",
                     )
                 )
 
@@ -131,7 +134,69 @@ class ScopeProvider(EvidenceProvider):
             Set of concept words
         """
         # Simple concept extraction - in practice would use NLP
-        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'use', 'using', 'used', 'use', 'make', 'made', 'making', 'change', 'changed', 'changing', 'add', 'added', 'adding', 'remove', 'removed', 'removing', 'fix', 'fixed', 'fixing', 'improve', 'improved', 'improving', 'optimize', 'optimized', 'optimizing'}
+        stop_words = {
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "use",
+            "using",
+            "used",
+            "make",
+            "made",
+            "making",
+            "change",
+            "changed",
+            "changing",
+            "add",
+            "added",
+            "adding",
+            "remove",
+            "removed",
+            "removing",
+            "fix",
+            "fixed",
+            "fixing",
+            "improve",
+            "improved",
+            "improving",
+            "optimize",
+            "optimized",
+            "optimizing",
+        }
         words = text.lower().split()
         concepts = {w for w in words if len(w) > 3 and w not in stop_words}
         return concepts

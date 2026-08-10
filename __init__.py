@@ -17,11 +17,18 @@ for _p in (ENGINE_PATH / "src", ENGINE_PATH):
     if _sp not in sys.path:
         sys.path.insert(0, _sp)
 
-from intent_alignment.models import AlignmentContext, AlignmentReport
 from intent_alignment.engine import IntentAlignmentEngine
+from intent_alignment.models import AlignmentContext, AlignmentReport
 
 __version__ = "1.0.0"
 __author__ = "Intent Alignment Engine Team"
+
+__all__ = [
+    "AlignmentContext",
+    "AlignmentReport",
+    "IntentAlignmentEngine",
+    "analyze_code",
+]
 
 
 def analyze_code():

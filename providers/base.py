@@ -1,7 +1,8 @@
 """Base class for evidence providers."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import Any
+
 from intent_alignment.models import Evidence
 
 
@@ -19,7 +20,7 @@ class EvidenceProvider(ABC):
         self.weight = weight
 
     @abstractmethod
-    def collect(self, context: Dict[str, Any]) -> List[Evidence]:
+    def collect(self, context: dict[str, Any]) -> list[Evidence]:
         """Collect evidence from the given context.
 
         Args:

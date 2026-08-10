@@ -27,4 +27,5 @@ def test_get_recent_commands_safe():
 
 def tmp_path_for():
     import tempfile
+
     return Path(tempfile.mkdtemp())

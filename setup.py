@@ -1,12 +1,13 @@
 """Editable install for the intent-drift skill."""
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="claude-skill-intent-drift",
     version="1.0.0",
     description="Intent drift analyzer skill for Claude Code agents",
     packages=find_packages(exclude=("tests", "tests.*")),
+    py_modules=["analyzer"],
     python_requires=">=3.10",
     install_requires=[
         "intent-drift>=0.1.0",

@@ -6,8 +6,8 @@ from pathlib import Path
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
 
-from providers.goal_provider import GoalProvider
 from providers.constraint_provider import ConstraintProvider
+from providers.goal_provider import GoalProvider
 from providers.problematic_findings_provider import ProblematicFindingsProvider
 
 
@@ -49,27 +49,32 @@ def test_problematic_findings_detects_low_similarity():
     ev = p.collect(_ctx("reduce memory usage", "rewrite the auth layer entirely"))
     assert any("drift" in e.details.lower() for e in ev)
 
-from providers.scope_provider import ScopeProvider
+
 from providers.execution_provider import ExecutionProvider
+from providers.scope_provider import ScopeProvider
 
 
 def test_scope_provider_no_expansion():
     """Aligned case: current plan uses the same concepts as the original goal."""
     p = ScopeProvider()
-    ev = p.collect(_ctx(
-        "reduce memory usage at runtime",
-        "reduce memory usage at runtime",
-    ))
+    ev = p.collect(
+        _ctx(
+            "reduce memory usage at runtime",
+            "reduce memory usage at runtime",
+        )
+    )
     assert ev[0].value >= 90
 
 
 def test_scope_provider_detects_expansion():
     """Drifted case: current plan introduces many concepts not in the original goal."""
     p = ScopeProvider()
-    ev = p.collect(_ctx(
-        "reduce memory usage",
-        "rewrite authentication database networking caching logging deployment pipeline monitoring",
-    ))
+    ev = p.collect(
+        _ctx(
+            "reduce memory usage",
+            "rewrite authentication database networking caching logging deployment pipeline monitoring",
+        )
+    )
     assert ev[0].value < 90
 
 
@@ -143,27 +148,33 @@ def test_execution_provider_reasoning_matches_plan():
     assert len(reasoning_evidence) > 0
 
 
+from providers.architecture_provider import ArchitectureProvider
 from providers.dependency_provider import DependencyProvider
 from providers.file_graph_provider import FileGraphProvider
-from providers.architecture_provider import ArchitectureProvider
 from providers.requirement_coverage_provider import RequirementCoverageProvider
 
 
 def test_dependency_provider_no_changes():
     """Aligned case: no install/remove commands means no dependency drift."""
     p = DependencyProvider()
-    ev = p.collect(_ctx("add caching layer", "add caching layer", {"recent_commands": ["pytest", "git status"]}))
+    ev = p.collect(
+        _ctx(
+            "add caching layer", "add caching layer", {"recent_commands": ["pytest", "git status"]}
+        )
+    )
     assert ev[0].value >= 80
 
 
 def test_dependency_provider_detects_install():
     """Case: install commands present, checked against goal keyword alignment."""
     p = DependencyProvider()
-    ev = p.collect(_ctx(
-        "add caching layer with redis",
-        "implement redis cache",
-        {"recent_commands": ["pip install redis"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer with redis",
+            "implement redis cache",
+            {"recent_commands": ["pip install redis"]},
+        )
+    )
     assert len(ev) > 0
     assert ev[0].value >= 50
 
@@ -171,11 +182,13 @@ def test_dependency_provider_detects_install():
 def test_dependency_provider_detects_removal():
     """Drifted case: dependency removal should lower the score."""
     p = DependencyProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"recent_commands": ["pip uninstall redis"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"recent_commands": ["pip uninstall redis"]},
+        )
+    )
     assert ev[0].value < 50
 
 
@@ -204,11 +217,13 @@ def test_file_graph_provider_no_edited_files():
 def test_file_graph_provider_few_files():
     """Aligned case: small number of edited files, focused change."""
     p = FileGraphProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"edited_files": ["cache.py", "cache_test.py"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"edited_files": ["cache.py", "cache_test.py"]},
+        )
+    )
     assert len(ev) > 0
     assert ev[0].value > 50
 
@@ -216,11 +231,13 @@ def test_file_graph_provider_few_files():
 def test_file_graph_provider_many_files_flagged():
     """Drifted case: large number of edited files should lower the score."""
     p = FileGraphProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"edited_files": [f"file_{i}.py" for i in range(30)]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"edited_files": [f"file_{i}.py" for i in range(30)]},
+        )
+    )
     assert ev[0].value < 100
 
 
@@ -234,11 +251,13 @@ def test_file_graph_provider_empty_context():
 def test_architecture_provider_main_file_edit():
     """Case: editing a main/entry-point file should be flagged as significant architectural work."""
     p = ArchitectureProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"edited_files": ["main.py"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"edited_files": ["main.py"]},
+        )
+    )
     main_evidence = [e for e in ev if "main application" in e.details.lower()]
     assert len(main_evidence) > 0
 
@@ -246,11 +265,13 @@ def test_architecture_provider_main_file_edit():
 def test_architecture_provider_single_directory_focused():
     """Aligned case: changes focused in a single directory should score high."""
     p = ArchitectureProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"edited_files": ["cache/store.py", "cache/utils.py"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"edited_files": ["cache/store.py", "cache/utils.py"]},
+        )
+    )
     dir_evidence = [e for e in ev if "directory" in e.details.lower()]
     assert len(dir_evidence) > 0
     assert dir_evidence[0].value >= 90
@@ -259,11 +280,13 @@ def test_architecture_provider_single_directory_focused():
 def test_architecture_provider_spread_across_directories():
     """Drifted case: changes spread across many directories should lower the score."""
     p = ArchitectureProvider()
-    ev = p.collect(_ctx(
-        "add caching layer",
-        "add caching layer",
-        {"edited_files": ["a/x.py", "b/y.py", "c/z.py", "d/w.py"]},
-    ))
+    ev = p.collect(
+        _ctx(
+            "add caching layer",
+            "add caching layer",
+            {"edited_files": ["a/x.py", "b/y.py", "c/z.py", "d/w.py"]},
+        )
+    )
     dir_evidence = [e for e in ev if "directories" in e.details.lower()]
     assert len(dir_evidence) > 0
     assert dir_evidence[0].value < 100
@@ -296,7 +319,10 @@ def test_requirement_coverage_high_coverage():
     p = RequirementCoverageProvider()
     ctx = _ctx("add caching layer", "add caching layer")
     ctx["original_goal"]["success_criteria"] = ["responses cached", "latency reduced"]
-    ctx["current_plan"]["steps"] = ["implement responses cached in redis", "verify latency reduced under load"]
+    ctx["current_plan"]["steps"] = [
+        "implement responses cached in redis",
+        "verify latency reduced under load",
+    ]
     ev = p.collect(ctx)
     assert ev[0].value >= 80
 

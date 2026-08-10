@@ -22,10 +22,20 @@ def _base_config():
 
 def test_parse_arguments_basic():
     a = IntentDriftAnalyzer()
-    cfg = a.parse_arguments([
-        "--original-goal", "Do X", "--current-plan", "Do Y",
-        "--context", "ctx", "--format", "json", "--threshold", "60",
-    ])
+    cfg = a.parse_arguments(
+        [
+            "--original-goal",
+            "Do X",
+            "--current-plan",
+            "Do Y",
+            "--context",
+            "ctx",
+            "--format",
+            "json",
+            "--threshold",
+            "60",
+        ]
+    )
     assert cfg["original_goal"] == "Do X"
     assert cfg["current_plan"] == "Do Y"
     assert cfg["execution_context"] == "ctx"
@@ -51,6 +61,7 @@ def test_export_text_contains_status():
 
 def test_export_json_is_parseable():
     import json
+
     a = IntentDriftAnalyzer()
     report = a.analyze(_base_config())
     out = a.export_report(report, "json")

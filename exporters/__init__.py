@@ -1,9 +1,9 @@
 """Report exporters for different output formats."""
 
-from typing import Dict, Any
-from intent_alignment.models import AlignmentReport
 import json
 from datetime import datetime
+
+from intent_alignment.models import AlignmentReport
 
 
 class BaseExporter:
@@ -50,16 +50,20 @@ class TextExporter(BaseExporter):
         lines.append("Timeline (trend):")
         if report.timeline:
             for i, point in enumerate(report.timeline, 1):
-                timestamp = datetime.fromtimestamp(
-                    point.get('timestamp', 0)
-                ).strftime("%Y-%m-%d %H:%M")
-                lines.append(f"  {i}. [{timestamp}] {point.get('score', 0):.1f}% - {point.get('note', '')}")
+                timestamp = datetime.fromtimestamp(point.get("timestamp", 0)).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
+                lines.append(
+                    f"  {i}. [{timestamp}] {point.get('score', 0):.1f}% - {point.get('note', '')}"
+                )
         else:
             lines.append("  No historical data available")
         lines.append("")
         lines.append("Component Breakdown:")
         for component, data in report.breakdown.items():
-            lines.append(f"  {component}: {data.get('score', 0):.1f}% (weight: {data.get('weight', 0):.2f})")
+            lines.append(
+                f"  {component}: {data.get('score', 0):.1f}% (weight: {data.get('weight', 0):.2f})"
+            )
 
         return "\n".join(lines)
 
@@ -108,9 +112,9 @@ class MarkdownExporter(BaseExporter):
             lines.append("| Time | Score | Note |")
             lines.append("|------|-------|------|")
             for point in report.timeline:
-                timestamp = datetime.fromtimestamp(
-                    point.get('timestamp', 0)
-                ).strftime("%Y-%m-%d %H:%M")
+                timestamp = datetime.fromtimestamp(point.get("timestamp", 0)).strftime(
+                    "%Y-%m-%d %H:%M"
+                )
                 lines.append(
                     f"| {timestamp} | {point.get('score', 0):.1f}% | {point.get('note', '')} |"
                 )
@@ -138,7 +142,7 @@ class JSONExporter(BaseExporter):
                     "source": e.source,
                     "value": e.value,
                     "confidence": e.confidence,
-                    "details": e.details
+                    "details": e.details,
                 }
                 for e in report.evidence
             ],
@@ -149,6 +153,8 @@ class JSONExporter(BaseExporter):
                 for name, comp in report.breakdown.items()
             },
             "timeline": report.timeline,
-            "generated_at": datetime.now().isoformat()
+            "generated_at": datetime.now().isoformat(),
         }
-        return json.dumps(report_dict, indent=2, default=lambda o: vars(o) if hasattr(o, "__dict__") else str(o))
+        return json.dumps(
+            report_dict, indent=2, default=lambda o: vars(o) if hasattr(o, "__dict__") else str(o)
+        )

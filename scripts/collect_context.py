@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """Context collection utilities for automatic context gathering."""
 
-from pathlib import Path
-from typing import Dict, Any, List, Optional
 import subprocess
-import json
-import os
+from pathlib import Path
+from typing import Any
+
 
 class ContextCollector:
     """Collects execution context from git, file system, and shell history."""
 
-    def __init__(self, repo_path: Optional[Path] = None):
+    def __init__(self, repo_path: Path | None = None):
         """Initialize the context collector.
 
         Args:
@@ -18,29 +17,29 @@ class ContextCollector:
         """
         self.repo_path = repo_path or Path.cwd()
 
-    def collect_all(self) -> Dict[str, Any]:
+    def collect_all(self) -> dict[str, Any]:
         """Collect all available context.
 
         Returns:
             Dictionary with execution context data
         """
-        context = {}
+        context: dict[str, Any] = {}
 
         # Git-based context
-        context['git_diff'] = self.get_git_diff()
-        context['recent_commits'] = self.get_recent_commits()
-        context['edited_files'] = self.get_edited_files()
+        context["git_diff"] = self.get_git_diff()
+        context["recent_commits"] = self.get_recent_commits()
+        context["edited_files"] = self.get_edited_files()
 
         # Shell command history
-        context['recent_commands'] = self.get_recent_commands()
+        context["recent_commands"] = self.get_recent_commands()
 
         # File changes
-        context['file_changes'] = self.get_file_changes()
+        context["file_changes"] = self.get_file_changes()
 
         # Analysis metadata
-        context['metadata'] = {
-            'repo_path': str(self.repo_path),
-            'collected_at': self.get_timestamp()
+        context["metadata"] = {
+            "repo_path": str(self.repo_path),
+            "collected_at": self.get_timestamp(),
         }
 
         return context
@@ -49,11 +48,11 @@ class ContextCollector:
         """Get git diff for uncommitted changes."""
         try:
             result = subprocess.run(
-                ['git', 'diff', 'HEAD'],
+                ["git", "diff", "HEAD"],
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode == 0:
                 return result.stdout
@@ -61,37 +60,37 @@ class ContextCollector:
             pass
         return ""
 
-    def get_recent_commits(self, count: int = 5) -> List[str]:
+    def get_recent_commits(self, count: int = 5) -> list[str]:
         """Get recent commit messages."""
         try:
             result = subprocess.run(
-                ['git', 'log', f'--oneline', f'-{count}'],
+                ["git", "log", "--oneline", f"-{count}"],
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode == 0:
-                return result.stdout.strip().split('\n')
+                return result.stdout.strip().split("\n")
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
         return []
 
-    def get_edited_files(self) -> List[str]:
+    def get_edited_files(self) -> list[str]:
         """Get list of recently edited files."""
         edited = []
 
         # Git status
         try:
             result = subprocess.run(
-                ['git', 'status', '--porcelain'],
+                ["git", "status", "--porcelain"],
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
+                for line in result.stdout.strip().split("\n"):
                     if line:
                         # Format: XY filename
                         parts = line.split()
@@ -103,8 +102,9 @@ class ContextCollector:
         # Also check for recently modified files
         try:
             import time
+
             now = time.time()
-            for path in self.repo_path.rglob('*'):
+            for path in self.repo_path.rglob("*"):
                 if path.is_file() and path.stat().st_mtime > (now - 3600):  # Last hour
                     edited.append(str(path.relative_to(self.repo_path)))
         except (OSError, PermissionError):
@@ -112,21 +112,21 @@ class ContextCollector:
 
         return list(set(edited))  # Remove duplicates
 
-    def get_recent_commands(self) -> List[str]:
+    def get_recent_commands(self) -> list[str]:
         """Get recent shell commands from history."""
         commands = []
 
         # Check common shell history files
         history_files = [
-            Path.home() / '.bash_history',
-            Path.home() / '.zsh_history',
-            Path.home() / '.history'
+            Path.home() / ".bash_history",
+            Path.home() / ".zsh_history",
+            Path.home() / ".history",
         ]
 
         for hist_file in history_files:
             if hist_file.exists():
                 try:
-                    with open(hist_file, 'r', errors='ignore') as f:
+                    with open(hist_file, errors="ignore") as f:
                         lines = f.readlines()
                         # Get last 20 commands
                         commands.extend(lines[-20:])
@@ -137,43 +137,39 @@ class ContextCollector:
         cleaned = []
         for cmd in commands:
             cmd = cmd.strip()
-            if cmd and not cmd.startswith('#'):
+            if cmd and not cmd.startswith("#"):
                 # Remove timestamps from zsh history
-                if cmd[0].isdigit() and ';' in cmd[:20]:
-                    cmd = cmd.split(';', 1)[-1]
+                if cmd[0].isdigit() and ";" in cmd[:20]:
+                    cmd = cmd.split(";", 1)[-1]
                 cleaned.append(cmd)
 
         return cleaned[-20:] if cleaned else []
 
-    def get_file_changes(self) -> Dict[str, Any]:
+    def get_file_changes(self) -> dict[str, Any]:
         """Analyze file changes for insights."""
-        changes = {
-            'added': [],
-            'modified': [],
-            'deleted': []
-        }
+        changes: dict[str, list[str]] = {"added": [], "modified": [], "deleted": []}
 
         try:
             result = subprocess.run(
-                ['git', 'status', '--porcelain'],
+                ["git", "status", "--porcelain"],
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             if result.returncode == 0:
-                for line in result.stdout.strip().split('\n'):
+                for line in result.stdout.strip().split("\n"):
                     if not line:
                         continue
                     status = line[:2]
                     filename = line[3:]
 
-                    if status[0] == 'A' or status[1] == 'A':
-                        changes['added'].append(filename)
-                    elif status[0] == 'D' or status[1] == 'D':
-                        changes['deleted'].append(filename)
-                    elif status[0] in ('M', 'R') or status[1] in ('M', 'R'):
-                        changes['modified'].append(filename)
+                    if status[0] == "A" or status[1] == "A":
+                        changes["added"].append(filename)
+                    elif status[0] == "D" or status[1] == "D":
+                        changes["deleted"].append(filename)
+                    elif status[0] in ("M", "R") or status[1] in ("M", "R"):
+                        changes["modified"].append(filename)
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
 
@@ -182,4 +178,5 @@ class ContextCollector:
     def get_timestamp(self) -> str:
         """Get current timestamp."""
         from datetime import datetime
+
         return datetime.now().isoformat()
