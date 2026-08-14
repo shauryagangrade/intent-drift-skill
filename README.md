@@ -14,6 +14,19 @@ Detects when AI coding agents begin solving a different problem than originally 
 - Current execution plans  
 - File changes and behavior
 
+### What the skill is for (and is not)
+
+- **Evidence over prose:** drift assessments are grounded in real repo state
+  (git diff, edited files, shell history), not just what a plan claims.
+- **Explainable:** every score traces back to evidence lines a human can verify.
+- **A maintainer tool, not a replacement:** it produces a pause-and-confirm call,
+  never an autonomous decision.
+- **Privacy-safe by default:** auto-collected context is scrubbed of secret-like
+  content unless scrubbing is explicitly disabled.
+
+The project's direction of record lives in [ROADMAP.md](ROADMAP.md); every merged
+change is recorded in [CHANGELOG.md](CHANGELOG.md).
+
 ## 🛠️ Features
 
 - Evidence-based drift detection using multiple providers
@@ -179,6 +192,14 @@ See `CONTRIBUTING.md` for:
 - Code style guidelines
 - Testing requirements
 - Documentation standards
+- The contribution flow: claim-before-PR, a 3-PR-per-author cap, maintainer
+  sign-off on approach for non-trivial changes, and a `CHANGELOG.md` entry on
+  every merged PR
+
+## 📍 Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for the direction of record: goals, milestones,
+the "up for grabs" backlog, and what is explicitly out of scope.
 
 ## 📄 License
 

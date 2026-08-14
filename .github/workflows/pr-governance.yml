@@ -1,0 +1,68 @@
+name: PR governance
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+jobs:
+  governance:
+    name: Governance checks (scope, cap, claim)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run governance checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.login }}
+        run: |
+          set -u
+          notes=""
+          fail=false
+
+          # --- 1. Claimed? PR body must reference a Closes/#NN link ----------
+          body="$(gh pr view "$PR_NUMBER" --json body --jq .body || true)"
+          issues="$(printf '%s' "$body" | rg -o "#[0-9]+" | rg -v "^#0$" | sort -u || true)"
+          if [ -z "$issues" ]; then
+            notes="$notes
+            - No issue referenced in the PR body. Claim an issue first and link it with \`Closes #NN\`."
+          fi
+
+          # --- 2. Scope: linked issues must not be planned/out-of-scope ------
+          for n in $issues; do
+            num="${n#\#}"
+            labels="$(gh issue view "$num" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || true)"
+            if printf '%s' "$labels" | rg -q "planned|out-of-scope"; then
+              fail=true
+              notes="$notes
+              - Links #$num which is labeled [$labels] — PRs against planned/out-of-scope issues are not accepted."
+            fi
+          done
+
+          # --- 3. Cap: max 3 concurrent open PRs per author -------------------
+          count="$(gh pr list --author "$PR_AUTHOR" --state open --json number --jq 'length')"
+          if [ "$count" -gt 3 ]; then
+            fail=true
+            notes="$notes
+            - You already have $count open PRs (max 3 per author). Finish or close one first."
+          fi
+
+          if [ -n "$notes" ]; then
+            existing="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+              --jq '.[] | select(.body | startswith("### Governance checks")) | .id' 2>/dev/null || true)"
+            if [ -z "$existing" ]; then
+              gh pr comment "$PR_NUMBER" --body "### Governance checks$notes"
+            fi
+          fi
+
+          if [ "$fail" = true ]; then
+            echo "Governance violations found; failing check."
+            exit 1
+          fi
+          echo "Governance checks passed."

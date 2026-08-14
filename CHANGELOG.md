@@ -1,0 +1,51 @@
+# Changelog
+
+## Changelog policy
+
+- **Every merged PR must add an entry here** under the right section (this is a
+  hard requirement enforced by the PR template).
+- New entries are added by the PR author at the top of the appropriate section.
+- Sections follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/):
+  `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
+- The `[Unreleased]` section is where changes accumulate until the next release.
+- This file is the project's permanent direction ledger: reading the diffs here
+  over time should show the project moving along `ROADMAP.md`.
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- `npx intent-drift` distribution: npm package with a Node launcher that
+  bootstraps a Python 3.10+ virtualenv, installs the engine, and runs the CLI
+  (`package.json`, `bin/intent-drift.js`).
+- `--version` and `--help` CLI output; version reads from `metadata.json` as the
+  single source of truth (#17).
+- Secret scrubbing of auto-collected context by default: tokens, `password=` /
+  `api_key=` assignments, `Authorization:` headers, and long base64 blobs are
+  masked before they reach the analyzer or report exporters (#31).
+- gitleaks config allowing the test fixtures that deliberately contain fake
+  secrets (#31).
+
+### Changed
+- Auto context collection now skips heavy/vendored directories and reads only the
+  tail of shell-history files, keeping collection fast on large repos (#14, #34).
+- Evidence values are canonicalized to the 0–100 scale used by the rest of the
+  engine (#33).
+- Edited-file resolution in `FileGraphProvider` is now repo-root relative (#36).
+
+### Fixed
+- Clear errors for missing or invalid CLI values (`--format`, `--threshold`,
+  unknown flags) instead of silent fallbacks (#37).
+- `install.sh` now works on macOS and never deletes a real directory (#32).
+- Cross-platform test failures on Windows (path separators, `USERPROFILE`) (#34, #35).
+
+### Security
+- Auto-collected shell history and git context are scrubbed by default before any
+  export (#31).
+
+## [1.0.0] - 2026-08-10
+
+Initial release of the intent-drift skill.

@@ -79,6 +79,8 @@ exporters in `exporters/`, and auto context collection in `scripts/collect_conte
 - State assumptions when inferring goal/plan from the repo; never fabricate intent.
 - Below-threshold results are a call to confirm, not a reason to abandon good work.
 - Prefer `--auto-context` so evidence reflects real repo state, not just prose.
+- This skill is a maintainer tool, not a replacement: it pauses and asks for
+  confirmation — it never acts autonomously or re-plans the work itself.
 
 ## Files
 | File | Purpose |

@@ -1,0 +1,39 @@
+name: Weekly review
+
+on:
+  schedule:
+    # Mondays 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  weekly-review:
+    name: Post weekly maintainer summary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Generate summary
+        id: summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          summary="$(python3 scripts/weekly_summary.py)"
+          echo "$summary"
+          echo "$summary" > /tmp/weekly-summary.md
+      - name: Post to weekly review issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          issue="$(gh issue list --state open --label "weekly-review" --json number --jq '.[0].number // empty')"
+          body="$(cat /tmp/weekly-summary.md)"
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body "$body" --title "Weekly review — $(date -u +%F)"
+          else
+            gh issue create --title "Weekly review — $(date -u +%F)" --body "$body" --label "weekly-review"
+          fi
