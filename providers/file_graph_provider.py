@@ -75,11 +75,15 @@ class FileGraphProvider(EvidenceProvider):
                 )
             )
 
-        # Check for large files (best-effort; skip files we cannot read)
+        # Check for large files (best-effort; skip files we cannot read).
+        # ``edited_files`` entries are repo-relative (see
+        # ``ContextCollector.get_edited_files``), so resolve them against the
+        # repository root instead of the home directory.
+        repo_root = Path(execution_context.get("repo_path") or Path.cwd())
         large_files = []
         for f in edited_files:
             try:
-                p = Path.home() / f
+                p = repo_root / f
                 if p.exists() and p.stat().st_size > 10000:
                     large_files.append(f)
             except (OSError, PermissionError):
