@@ -39,10 +39,20 @@ change is recorded in [CHANGELOG.md](CHANGELOG.md).
 ## 🚀 Quick Start
 
 ```bash
+# Run the CLI without installing anything (Python 3.10+ required)
+npx intent-drift \
+  --original-goal "Reduce application memory usage" \
+  --current-plan "Optimize startup performance" \
+  --auto-context
+
 # Import into any Claude Code agent
 cd ~/.claude/skills/intent-drift
 ./analyze-code
 ```
+
+`npx intent-drift` is the packaged distribution: on first run it creates a
+dedicated virtualenv (`~/.intent-drift-venv`) and installs the analysis engine.
+Set `INTENT_DRIFT_PYTHON` to a specific Python 3.10+ binary if needed.
 
 ### Usage Examples
 

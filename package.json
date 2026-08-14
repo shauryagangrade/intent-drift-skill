@@ -1,0 +1,39 @@
+{
+  "name": "intent-drift",
+  "version": "1.0.0",
+  "description": "Detect intent drift in AI-assisted development — does the current work still match the original goal?",
+  "license": "MIT",
+  "author": "Shaurya Gangrade",
+  "bin": {
+    "intent-drift": "bin/intent-drift.js"
+  },
+  "files": [
+    "analyzer.py",
+    "__init__.py",
+    "providers",
+    "exporters",
+    "config",
+    "scripts",
+    "metadata.json",
+    "bin"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "keywords": [
+    "intent-drift",
+    "ai",
+    "agent",
+    "claude",
+    "drift",
+    "alignment",
+    "skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shauryagangrade/intent-drift-skill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shauryagangrade/intent-drift-skill/issues"
+  }
+}

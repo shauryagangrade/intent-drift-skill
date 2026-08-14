@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """Intent drift analysis skill for Claude Code agents."""
 
+import json
 import sys
 from pathlib import Path
 from typing import Any
 
-# Add the intent-drift to the path
-engine_path = Path.home() / "Projects" / "intent-drift" / "intent-drift"
-sys.path.insert(0, str(engine_path))
-
-import json
-
-from intent_alignment.engine import IntentAlignmentEngine
-from intent_alignment.models import AlignmentContext, AlignmentReport
+try:
+    from intent_alignment.engine import IntentAlignmentEngine
+    from intent_alignment.models import AlignmentContext, AlignmentReport
+except ImportError:
+    # Dev fallback: a local checkout of the engine (repo layout only).
+    engine_path = Path.home() / "Projects" / "intent-drift" / "intent-drift"
+    if (engine_path / "intent_alignment").is_dir():
+        sys.path.insert(0, str(engine_path))
+    from intent_alignment.engine import IntentAlignmentEngine
+    from intent_alignment.models import AlignmentContext, AlignmentReport
 
 USAGE = """intent-drift — analyze intent drift in AI-assisted development
 
