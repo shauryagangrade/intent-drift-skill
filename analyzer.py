@@ -20,8 +20,15 @@ class IntentDriftAnalyzer:
         """Initialize the analyzer with the Intent Alignment Engine."""
         self.engine = IntentAlignmentEngine()
 
-    def parse_arguments(self, args: list) -> dict[str, Any]:
-        """Parse command line arguments into a configuration dictionary."""
+    _FORMATS = ("text", "markdown", "json")
+
+    def parse_arguments(self, args: list[str]) -> dict[str, Any]:
+        """Parse command line arguments into a configuration dictionary.
+
+        Raises ``ValueError`` with a clear message when a value-taking flag is
+        missing its value, an unknown flag is passed, or ``--format`` /
+        ``--threshold`` receive an invalid value.
+        """
         config = {
             "original_goal": "",
             "current_plan": "",
@@ -34,33 +41,46 @@ class IntentDriftAnalyzer:
         i = 0
         while i < len(args):
             arg = args[i]
-            if arg == "--original-goal":
-                config["original_goal"] = args[i + 1].strip("\"'")
-                i += 2
-            elif arg == "--current-plan":
-                config["current_plan"] = args[i + 1].strip("\"'")
-                i += 2
-            elif arg == "--context":
-                config["execution_context"] = args[i + 1].strip("\"'")
+            if arg in ("--original-goal", "--current-plan", "--context", "--format", "--threshold"):
+                value = self._next_value(args, i, arg)
+                if arg == "--original-goal":
+                    config["original_goal"] = value.strip("\"'")
+                elif arg == "--current-plan":
+                    config["current_plan"] = value.strip("\"'")
+                elif arg == "--context":
+                    config["execution_context"] = value.strip("\"'")
+                elif arg == "--format":
+                    fmt = value.strip("\"'").lower()
+                    if fmt not in self._FORMATS:
+                        raise ValueError(
+                            f"Invalid value for --format: {value!r} "
+                            f"(expected one of {', '.join(self._FORMATS)})"
+                        )
+                    config["format"] = fmt
+                else:
+                    try:
+                        config["threshold"] = int(value)
+                    except ValueError:
+                        raise ValueError(
+                            f"Invalid value for --threshold: {value!r} (expected an integer)"
+                        ) from None
                 i += 2
             elif arg == "--auto-context":
                 config["auto_context"] = True
                 i += 1
-            elif arg == "--format":
-                format_type = args[i + 1].lower()
-                if format_type in ["text", "markdown", "json"]:
-                    config["format"] = format_type
-                i += 2
-            elif arg == "--threshold":
-                try:
-                    config["threshold"] = int(args[i + 1])
-                    i += 2
-                except (ValueError, IndexError):
-                    i += 1
+            elif arg.startswith("--"):
+                raise ValueError(f"Unknown option: {arg}")
             else:
                 i += 1
 
         return config
+
+    @staticmethod
+    def _next_value(args: list[str], index: int, flag: str) -> str:
+        """Return the value following *flag* at *index*, or raise a clear error."""
+        if index + 1 >= len(args):
+            raise ValueError(f"Missing value for {flag}")
+        return args[index + 1]
 
     def analyze(self, config: dict[str, Any]) -> AlignmentReport:
         """Perform intent drift analysis based on configuration."""
@@ -189,7 +209,11 @@ def main() -> None:
     parser = IntentDriftAnalyzer()
 
     # Parse command line arguments
-    config = parser.parse_arguments(sys.argv[1:])
+    try:
+        config = parser.parse_arguments(sys.argv[1:])
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     # Check for required arguments
     if not config["original_goal"]:
