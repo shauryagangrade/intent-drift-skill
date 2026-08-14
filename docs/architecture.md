@@ -48,7 +48,7 @@ IntentDriftAnalyzer.export_report()     # text | markdown | json
 
 ## Scoring
 
-Each `Evidence` carries a `value` (0–1 significance) and `confidence` (0–1). The engine
+Each `Evidence` carries a `value` (0–100 significance) and `confidence` (0–1). The engine
 computes a weighted average of `value`s (weights normalized), then a consistency-based
 confidence from the spread and diversity of evidence. `Status` bands:
 
