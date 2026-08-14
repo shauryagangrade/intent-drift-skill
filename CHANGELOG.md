@@ -18,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Project governance: `ROADMAP.md` as the direction of record (goals, milestones,
+  explicit out-of-scope list), a `CHANGELOG.md` every-PR-entry policy, and
+  AI-neutral contribution gates (claim-before-PR, 3-PR-per-author cap, maintainer
+  sign-off on approach for non-trivial work).
+- PR and issue templates, a PR-governance CI check (scope, cap, claim), and a
+  weekly-review workflow with `scripts/weekly_summary.py` that asks whether
+  merged work still moves the roadmap forward.
 - `npx intent-drift` distribution: npm package with a Node launcher that
   bootstraps a Python 3.10+ virtualenv, installs the engine, and runs the CLI
   (`package.json`, `bin/intent-drift.js`).
@@ -28,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   masked before they reach the analyzer or report exporters (#31).
 - gitleaks config allowing the test fixtures that deliberately contain fake
   secrets (#31).
+
+### Changed
+- `analyzer.py` imports the `intent_alignment` engine defensively, falling back
+  to a local checkout only when the installed package is missing — no hardcoded
+  developer path in shipped code.
 
 ### Changed
 - Auto context collection now skips heavy/vendored directories and reads only the
