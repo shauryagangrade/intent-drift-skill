@@ -174,7 +174,10 @@ def test_get_recent_commands_uses_tail(tmp_path, monkeypatch):
     lines = [f"cmd-{i:02d}" for i in range(25)]
     lines += ["git status", "git log --oneline -3"]
     hist.write_text("\n".join(lines) + "\n")
+    # Path.home() resolves via USERPROFILE on Windows (HOME is not consulted
+    # there), so point both at the temp dir to keep the test cross-platform.
     monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
 
     c = ContextCollector(repo_path=tmp_path)
     commands = c.get_recent_commands()
