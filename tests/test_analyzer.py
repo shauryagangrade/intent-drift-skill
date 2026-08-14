@@ -110,3 +110,34 @@ def test_export_json_is_parseable():
     data = json.loads(out)
     assert "overall_alignment" in data
     assert "evidence" in data
+
+
+def test_parse_arguments_help_prints_usage_and_exits():
+    import contextlib
+    import io
+
+    a = IntentDriftAnalyzer()
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            a.parse_arguments(["--help"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    assert "--original-goal" in buf.getvalue()
+    assert "--auto-context" in buf.getvalue()
+    assert "--format" in buf.getvalue()
+    assert "--threshold" in buf.getvalue()
+
+
+def test_parse_arguments_version_prints_and_exits():
+    import contextlib
+    import io
+
+    a = IntentDriftAnalyzer()
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            a.parse_arguments(["-V"])
+    except SystemExit as exc:
+        assert exc.code == 0
+    assert "intent-drift" in buf.getvalue()
