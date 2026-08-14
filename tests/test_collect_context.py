@@ -131,7 +131,8 @@ def test_recently_modified_skips_heavy_dirs(tmp_path, monkeypatch):
     monkeypatch.setenv("GIT_DIR", str(tmp_path / ".git"))  # not a repo; forces fallback
     c = ContextCollector(repo_path=tmp_path, lookback_hours=1)
     edited = c._recently_modified_files()
-    assert "src/app.py" in edited
+    # Use os.path.join so the separator matches on Windows (src\app.py).
+    assert str(Path("src") / "app.py") in edited
     assert not any("node_modules" in f or ".venv" in f or ".git" in f for f in edited)
 
 
