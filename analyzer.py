@@ -9,8 +9,44 @@ from typing import Any
 engine_path = Path.home() / "Projects" / "intent-drift" / "intent-drift"
 sys.path.insert(0, str(engine_path))
 
+import json
+
 from intent_alignment.engine import IntentAlignmentEngine
 from intent_alignment.models import AlignmentContext, AlignmentReport
+
+USAGE = """intent-drift — analyze intent drift in AI-assisted development
+
+Usage:
+  analyzer.py --original-goal GOAL --current-plan PLAN [options]
+
+Options:
+  --original-goal GOAL   The user's stated objective (required, unless inferred).
+  --current-plan PLAN    What is actually being built right now (required, unless inferred).
+  --context TEXT         Execution evidence (edited files, git diff, recent commands).
+                         Default: "auto".
+  --auto-context         Collect execution context automatically via
+                         scripts/collect_context.py. Overrides --context.
+  --format FORMAT        Output format: text | markdown | json. Default: text.
+  --threshold N          Minimum alignment % considered "on track" (0-100).
+                         Default: 75.
+  -h, --help             Show this help screen and exit.
+  -V, --version          Show the installed version and exit.
+
+Examples:
+  analyzer.py --original-goal "Reduce memory usage" --current-plan "Improve startup"
+  analyzer.py --original-goal "Add feature" --current-plan "Change architecture" \\
+    --auto-context --format json --threshold 80
+"""
+
+
+def _package_version() -> str:
+    """Read the installed version from metadata.json (single source of truth)."""
+    meta_path = Path(__file__).resolve().parent / "metadata.json"
+    try:
+        version = json.loads(meta_path.read_text()).get("version")
+    except (OSError, ValueError):
+        version = None
+    return str(version) if isinstance(version, str) else "unknown"
 
 
 class IntentDriftAnalyzer:
@@ -41,7 +77,19 @@ class IntentDriftAnalyzer:
         i = 0
         while i < len(args):
             arg = args[i]
-            if arg in ("--original-goal", "--current-plan", "--context", "--format", "--threshold"):
+            if arg in ("-h", "--help"):
+                print(USAGE, end="")
+                sys.exit(0)
+            elif arg in ("-V", "--version"):
+                print(f"intent-drift {_package_version()}")
+                sys.exit(0)
+            elif arg in (
+                "--original-goal",
+                "--current-plan",
+                "--context",
+                "--format",
+                "--threshold",
+            ):
                 value = self._next_value(args, i, arg)
                 if arg == "--original-goal":
                     config["original_goal"] = value.strip("\"'")
