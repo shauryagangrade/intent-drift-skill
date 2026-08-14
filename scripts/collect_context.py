@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Context collection utilities for automatic context gathering."""
 
+import os
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -65,18 +67,48 @@ def sanitize_text(text: str) -> str:
     return _LONG_BASE64.sub(_mask_base64, text)
 
 
+# Directories never walked when git is unavailable: their contents are build
+# artifacts or vendored code, not "edited files" (see issue #14).
+SKIP_DIRS = {
+    ".git",
+    "node_modules",
+    ".venv",
+    "venv",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "__pycache__",
+    "build",
+    "dist",
+    ".idea",
+    ".vscode",
+}
+
+# How much of the end of a history file to read. Enough for thousands of
+# commands, without loading multi-hundred-MB files wholesale.
+HISTORY_TAIL_BYTES = 256 * 1024
+
+
 class ContextCollector:
     """Collects execution context from git, file system, and shell history."""
 
-    def __init__(self, repo_path: Path | None = None, sanitize_secrets: bool = True):
+    def __init__(
+        self,
+        repo_path: Path | None = None,
+        lookback_hours: float = 1.0,
+        sanitize_secrets: bool = True,
+    ):
         """Initialize the context collector.
 
         Args:
             repo_path: Path to the repository to analyze (defaults to cwd)
+            lookback_hours: How far back (in hours) to look for recently
+                edited files. Defaults to 1 hour.
             sanitize_secrets: Mask secret-like content in collected context
                 (default True; disable with False to keep raw output)
         """
         self.repo_path = repo_path or Path.cwd()
+        self.lookback_seconds = lookback_hours * 3600
         self.sanitize_secrets = sanitize_secrets
 
     def collect_all(self) -> dict[str, Any]:
@@ -172,18 +204,63 @@ class ContextCollector:
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
 
-        # Also check for recently modified files
-        try:
-            import time
+        # Also check for recently modified files: git-aware first (respects
+        # .gitignore via --exclude-standard), with a bounded fallback walk for
+        # non-git repos that skips .git/node_modules/.venv and friends.
+        edited.extend(self._recently_modified_files())
 
-            now = time.time()
-            for path in self.repo_path.rglob("*"):
-                if path.is_file() and path.stat().st_mtime > (now - 3600):  # Last hour
-                    edited.append(str(path.relative_to(self.repo_path)))
+        return list(set(edited))  # Remove duplicates
+
+    def _recently_modified_files(self) -> list[str]:
+        """List files modified within the lookback window, gitignore-aware."""
+        cutoff = time.time() - self.lookback_seconds
+        edited: list[str] = []
+
+        # git ls-files lists tracked and untracked (--others --exclude-standard
+        # excludes .gitignore'd paths), never walking .git or vendored dirs.
+        try:
+            tracked = subprocess.run(
+                ["git", "ls-files", "-z"],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            untracked = subprocess.run(
+                ["git", "ls-files", "-z", "--others", "--exclude-standard"],
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if tracked.returncode == 0 and untracked.returncode == 0:
+                names = [n for n in (tracked.stdout + untracked.stdout).split("\0") if n]
+                for name in names:
+                    path = self.repo_path / name
+                    try:
+                        if path.is_file() and path.stat().st_mtime > cutoff:
+                            edited.append(name)
+                    except OSError:
+                        continue
+                return edited
+        except (subprocess.SubprocessError, FileNotFoundError):
+            pass
+
+        # Fallback: bounded walk skipping heavy/vendored directories.
+        try:
+            for root, dirs, files in os.walk(self.repo_path):
+                dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+                for name in files:
+                    path = Path(root) / name
+                    try:
+                        if path.is_file() and path.stat().st_mtime > cutoff:
+                            edited.append(str(path.relative_to(self.repo_path)))
+                    except OSError:
+                        continue
         except (OSError, PermissionError):
             pass
 
-        return list(set(edited))  # Remove duplicates
+        return edited
 
     def get_recent_commands(self) -> list[str]:
         """Get recent shell commands from history."""
@@ -198,13 +275,10 @@ class ContextCollector:
 
         for hist_file in history_files:
             if hist_file.exists():
-                try:
-                    with open(hist_file, errors="ignore") as f:
-                        lines = f.readlines()
-                        # Get last 20 commands
-                        commands.extend(lines[-20:])
-                except (OSError, PermissionError):
-                    continue
+                # Read only the tail of the file instead of loading the whole
+                # history (a .zsh_history can be hundreds of MB; #14).
+                lines = self._read_history_tail(hist_file).splitlines()
+                commands.extend(lines[-20:])
 
         # Clean and filter
         cleaned = []
@@ -217,6 +291,25 @@ class ContextCollector:
                 cleaned.append(cmd)
 
         return cleaned[-20:] if cleaned else []
+
+    @staticmethod
+    def _read_history_tail(hist_file: Path) -> str:
+        """Return the last ``HISTORY_TAIL_BYTES`` of a history file as text.
+
+        Seeks to the end and reads backwards a bounded window, so a huge
+        history file is never loaded wholesale. Skips the first (partial) line
+        of the window.
+        """
+        try:
+            size = hist_file.stat().st_size
+            with open(hist_file, "rb") as f:
+                if size > HISTORY_TAIL_BYTES:
+                    f.seek(size - HISTORY_TAIL_BYTES)
+                    f.readline()  # drop the partial first line
+                    return f.read().decode("utf-8", errors="ignore")
+                return f.read().decode("utf-8", errors="ignore")
+        except OSError:
+            return ""
 
     def get_file_changes(self) -> dict[str, Any]:
         """Analyze file changes for insights."""
