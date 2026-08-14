@@ -27,7 +27,7 @@ Options:
   --auto-context         Collect execution context automatically via
                          scripts/collect_context.py. Overrides --context.
   --format FORMAT        Output format: text | markdown | json. Default: text.
-  --threshold N          Minimum alignment %% considered "on track" (0-100).
+  --threshold N          Minimum alignment % considered "on track" (0-100).
                          Default: 75.
   -h, --help             Show this help screen and exit.
   -V, --version          Show the installed version and exit.
