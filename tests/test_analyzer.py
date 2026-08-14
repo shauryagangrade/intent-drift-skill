@@ -43,6 +43,48 @@ def test_parse_arguments_basic():
     assert cfg["threshold"] == 60
 
 
+def test_parse_arguments_missing_value_raises():
+    """A value-taking flag at the end of argv must not raise IndexError (#4)."""
+    a = IntentDriftAnalyzer()
+    for flag in ("--original-goal", "--current-plan", "--context", "--format", "--threshold"):
+        try:
+            a.parse_arguments([flag])
+        except ValueError as exc:
+            assert f"Missing value for {flag}" in str(exc)
+        else:
+            raise AssertionError(f"expected ValueError for {flag}")
+
+
+def test_parse_arguments_unknown_flag_raises():
+    a = IntentDriftAnalyzer()
+    try:
+        a.parse_arguments(["--definitely-not-a-flag"])
+    except ValueError as exc:
+        assert "Unknown option" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_parse_arguments_invalid_format_raises():
+    a = IntentDriftAnalyzer()
+    try:
+        a.parse_arguments(["--format", "xml"])
+    except ValueError as exc:
+        assert "Invalid value for --format" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_parse_arguments_invalid_threshold_raises():
+    a = IntentDriftAnalyzer()
+    try:
+        a.parse_arguments(["--threshold", "fast"])
+    except ValueError as exc:
+        assert "Invalid value for --threshold" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
 def test_analyze_returns_report():
     a = IntentDriftAnalyzer()
     report = a.analyze(_base_config())
