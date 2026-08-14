@@ -31,7 +31,7 @@ print(a.export_report(report, "markdown"))
 | `timeline` | list | (empty in this build) |
 
 ## `Evidence` (from `intent_alignment.models`)
-`source: str`, `value: float` (0–1), `confidence: float` (0–1), `details: str`.
+`source: str`, `value: float` (0–100), `confidence: float` (0–1), `details: str`.
 
 ## `ContextCollector`
 `collect_all() -> dict` with `git_diff`, `recent_commits`, `edited_files`,
