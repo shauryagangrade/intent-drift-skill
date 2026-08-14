@@ -115,3 +115,73 @@ def tmp_path_for():
     import tempfile
 
     return Path(tempfile.mkdtemp())
+
+
+def test_recently_modified_skips_heavy_dirs(tmp_path, monkeypatch):
+    """The non-git fallback walk must never descend into .git/node_modules/.venv."""
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "app.py").write_text("x")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "config").write_text("secret-ish but ignored")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "pkg.js").write_text("y")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "lib.py").write_text("z")
+
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / ".git"))  # not a repo; forces fallback
+    c = ContextCollector(repo_path=tmp_path, lookback_hours=1)
+    edited = c._recently_modified_files()
+    # Use os.path.join so the separator matches on Windows (src\app.py).
+    assert str(Path("src") / "app.py") in edited
+    assert not any("node_modules" in f or ".venv" in f or ".git" in f for f in edited)
+
+
+def test_recently_modified_honors_lookback(tmp_path, monkeypatch):
+    """Files older than the lookback window are not reported."""
+    (tmp_path / "old.txt").write_text("old")
+    old = tmp_path / "old.txt"
+    import os
+
+    os.utime(old, (0, 0))  # epoch: definitely outside any lookback window
+    (tmp_path / "new.txt").write_text("new")
+
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / ".git"))
+    c = ContextCollector(repo_path=tmp_path, lookback_hours=1)
+    edited = c._recently_modified_files()
+    assert "new.txt" in edited
+    assert "old.txt" not in edited
+
+
+def test_read_history_tail_reads_only_tail(tmp_path):
+    from scripts.collect_context import HISTORY_TAIL_BYTES
+
+    hist = tmp_path / ".zsh_history"
+    # Build a file much larger than the tail window.
+    header = "padding line\n" * (HISTORY_TAIL_BYTES // 14 + 100)
+    header += "git status\n"
+    header += "git log --oneline -5\n"
+    hist.write_text(header)
+
+    c = ContextCollector(repo_path=tmp_path)
+    tail = c._read_history_tail(hist)
+    # The last commands must be present in the tail.
+    assert "git log --oneline -5" in tail
+    assert tail.rstrip().endswith("git log --oneline -5")
+
+
+def test_get_recent_commands_uses_tail(tmp_path, monkeypatch):
+    """get_recent_commands returns only the last 20 commands."""
+    hist = tmp_path / ".zsh_history"
+    lines = [f"cmd-{i:02d}" for i in range(25)]
+    lines += ["git status", "git log --oneline -3"]
+    hist.write_text("\n".join(lines) + "\n")
+    # Path.home() resolves via USERPROFILE on Windows (HOME is not consulted
+    # there), so point both at the temp dir to keep the test cross-platform.
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+    c = ContextCollector(repo_path=tmp_path)
+    commands = c.get_recent_commands()
+    assert len(commands) == 20
+    assert "git log --oneline -3" in commands  # the last command survives
+    assert "cmd-00" not in commands  # the first commands are dropped
