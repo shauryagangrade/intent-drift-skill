@@ -1,0 +1,13 @@
+# Gitleaks allowlist for the intent-drift skill.
+#
+# tests/test_collect_context.py deliberately contains fake secrets (access
+# tokens, JWTs, AWS keys) as test fixtures that prove the sanitizer masks
+# secret-like content. These are dummy values that never touch a real system,
+# so scanning that one file yields only false positives.
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+  '''tests/test_collect_context.py''',
+]
