@@ -342,3 +342,51 @@ def test_requirement_coverage_empty_context():
     p = RequirementCoverageProvider()
     ev = p.collect({})
     assert isinstance(ev, list)
+
+
+def test_all_providers_emit_values_on_0_100_scale():
+    """Every provider must emit evidence values on the canonical 0-100 scale."""
+    from providers import (
+        ArchitectureProvider,
+        ConstraintProvider,
+        DependencyProvider,
+        ExecutionProvider,
+        FileGraphProvider,
+        GoalProvider,
+        ProblematicFindingsProvider,
+        RequirementCoverageProvider,
+        ScopeProvider,
+    )
+
+    providers = [
+        ArchitectureProvider(),
+        ConstraintProvider(),
+        DependencyProvider(),
+        ExecutionProvider(),
+        FileGraphProvider(),
+        GoalProvider(),
+        ProblematicFindingsProvider(),
+        RequirementCoverageProvider(),
+        ScopeProvider(),
+    ]
+    ctx = {
+        "original_goal": {
+            "text": "reduce memory usage at runtime",
+            "constraints": ["stay under 100ms"],
+            "success_criteria": ["cached", "fast"],
+        },
+        "current_plan": {"text": "rewrite the auth layer", "steps": ["rewrite auth", "add login"]},
+        "execution_context": {
+            "edited_files": ["main.py", "auth.py"],
+            "recent_commands": ["git log", "pip install"],
+            "reasoning_summary": "working through auth rewrite",
+            "constraints": ["stay under 100ms"],
+        },
+    }
+    for provider in providers:
+        evidence = provider.collect(ctx)
+        assert evidence, f"{provider.name} returned no evidence for the generic context"
+        for item in evidence:
+            assert (
+                0 <= item.value <= 100
+            ), f"{provider.name} emitted value {item.value} outside the canonical 0-100 scale"

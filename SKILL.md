@@ -55,7 +55,7 @@ before continuing — do not silently keep building the off-track plan.
 ## How it works
 
 Nine evidence providers each inspect the same context and emit weighted `Evidence`
-(value 0–1, confidence 0–1). The engine computes a weighted score, a consistency-based
+(value 0–100, confidence 0–100). The engine computes a weighted score, a consistency-based
 confidence, a status band, and a recommendation. Providers live in `providers/`,
 exporters in `exporters/`, and auto context collection in `scripts/collect_context.py`.
 
