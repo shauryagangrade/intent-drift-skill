@@ -83,7 +83,13 @@ class IntentDriftAnalyzer:
             elif arg in ("-V", "--version"):
                 print(f"intent-drift {_package_version()}")
                 sys.exit(0)
-            elif arg in ("--original-goal", "--current-plan", "--context", "--format", "--threshold"):
+            elif arg in (
+                "--original-goal",
+                "--current-plan",
+                "--context",
+                "--format",
+                "--threshold",
+            ):
                 value = self._next_value(args, i, arg)
                 if arg == "--original-goal":
                     config["original_goal"] = value.strip("\"'")
