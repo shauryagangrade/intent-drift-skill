@@ -1,6 +1,7 @@
 """Tests for evidence providers."""
 
 import sys
+import tempfile
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -246,6 +247,42 @@ def test_file_graph_provider_empty_context():
     p = FileGraphProvider()
     ev = p.collect({})
     assert isinstance(ev, list)
+
+
+def test_file_graph_provider_large_file_resolved_against_repo_path():
+    """Repo-relative edited files resolve against repo_path, not home (#7)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp)
+        (repo / "huge.py").write_text("x" * 20000)  # > 10 KB
+        (repo / "tiny.py").write_text("small")
+
+        p = FileGraphProvider()
+        ev = p.collect(
+            _ctx(
+                "add caching layer",
+                "add caching layer",
+                {"edited_files": ["huge.py", "tiny.py"], "repo_path": str(repo)},
+            )
+        )
+        large = [e for e in ev if "large" in e.details.lower()]
+        assert len(large) == 1
+        assert "1 > 10KB files" in large[0].details
+
+
+def test_file_graph_provider_no_large_file_outside_repo():
+    """A file outside the repo root is not counted as a modified large file (#7)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        empty_repo = Path(tmp)
+        p = FileGraphProvider()
+        ev = p.collect(
+            _ctx(
+                "add caching layer",
+                "add caching layer",
+                {"edited_files": ["huge.py"], "repo_path": str(empty_repo)},
+            )
+        )
+        large = [e for e in ev if "large" in e.details.lower()]
+        assert len(large) == 0
 
 
 def test_architecture_provider_main_file_edit():
