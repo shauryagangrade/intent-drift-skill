@@ -34,8 +34,8 @@ In `exporters/`, subclass `BaseExporter` and implement `export(report) -> str`; 
 it in `IntentDriftAnalyzer.export_report`.
 
 ## Point at a different engine
-The engine import path is set in `analyzer.py` and `__init__.py`:
-```python
-ENGINE_PATH = Path.home() / "Projects" / "intent-drift" / "intent-drift"
-```
-Change this if your copy of `intent-drift` lives elsewhere.
+The engine is a regular dependency: `analyzer.py` and `__init__.py` import it as
+`from intent_alignment.engine import IntentAlignmentEngine`. To use a different
+build, install your copy in the environment (e.g. `pip install -e /path/to/engine`)
+so `intent_alignment` resolves, or bump `intent-drift` in `pyproject.toml` and
+`metadata.json`.

@@ -2,6 +2,25 @@
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "claude-skill-intent-drift"
+version = "1.0.0"
+description = "Intent drift analyzer skill for Claude Code agents"
+requires-python = ">=3.10"
+dependencies = [
+    "intent-drift>=0.1.0",
+    "PyYAML>=6.0",
+]
+
+[project.scripts]
+intent-drift = "analyzer:main"
+
+[tool.setuptools]
+py-modules = ["analyzer", "config", "history"]
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
+
 [tool.black]
 line-length = 100
 target-version = ['py310', 'py311', 'py312']
