@@ -26,6 +26,9 @@ on:
   schedule:
     # every 6 hours
     - cron: "0 */6 * * *"
+  workflow_dispatch:
+    # manual run (runs the sweep job; read-only when no protected issues
+    # are assigned to experienced contributors)
 
 permissions:
   issues: write
@@ -206,7 +209,7 @@ jobs:
   sweep:
     name: Periodic sweep of good-first-issue assignments
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     concurrency:
       group: gfi-sweep
       cancel-in-progress: false
