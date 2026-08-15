@@ -1,0 +1,281 @@
+# Good-first-issue guard
+#
+# Reserves `good first issue` issues for first-time contributors:
+#   - an experienced contributor who gets assigned to a protected issue is
+#     unassigned and pointed at `help wanted`
+#   - a PR by an experienced contributor claiming a protected issue is closed
+#   - a periodic sweep re-checks assignments to catch issues labeled after
+#     they were assigned and unassign/reassign dodging
+#
+# SECURITY: this workflow listens on `pull_request_target`, which runs with a
+# write-scoped token on fork PRs, so it MUST NEVER `checkout` or execute code
+# from a PR. It only reads issue/PR metadata and writes comments,
+# unassignments and closes, all through `gh`. User-derived values are passed
+# to `gh` via environment variables or as quoted shell arguments -- never
+# string-interpolated into commands -- and every write is guarded with
+# `|| true` so a race (already-closed PR, already-unassigned issue) can't fail
+# the job.
+
+name: Good-first-issue guard
+
+on:
+  issues:
+    types: [assigned]
+  pull_request_target:
+    types: [opened, reopened]
+  schedule:
+    # every 6 hours
+    - cron: "0 */6 * * *"
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  assignment:
+    name: Enforce good-first-issue on assignment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'assigned'
+    concurrency:
+      group: gfi-assign-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check assignee against good-first-issue policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ASSIGNEE: ${{ github.event.assignee.login }}
+        run: |
+          set -u
+
+          PROTECTED_LABEL="good first issue"
+          REDIRECT_LABEL="help wanted"
+          REPO="${GH_REPO:-}"
+          issue="${ISSUE_NUM:-}"
+          login="${ASSIGNEE:-}"
+          REDIRECT_URL="https://github.com/$REPO/issues?q=label:%22$(printf '%s' "$REDIRECT_LABEL" | sed 's/ /+/g')%22"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          close_linked_prs() {
+            local issue="$1" login="$2" prs
+            prs="$(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq '.[] | select(.event == "cross-referenced") | .source.issue | select(.pull_request != null) | [.number, .user.login] | @tsv' 2>/dev/null || true)"
+            printf '%s\n' "$prs" | while IFS=$'\t' read -r pr auth; do
+              [ -n "$pr" ] || continue
+              [ "$auth" = "$login" ] || continue
+              gh pr close "$pr" --repo "$REPO" --comment "This PR references #$issue, a **$PROTECTED_LABEL** issue. This repo reserves **$PROTECTED_LABEL** issues for first-time contributors, so the PR is closed." >/dev/null 2>&1 || true
+            done
+          }
+
+          [ -n "$issue" ] && [ -n "$login" ] || { echo "Event has no issue or assignee; skipping."; exit 0; }
+
+          labels="$(gh api "repos/$REPO/issues/$issue" --jq '.labels[].name' 2>/dev/null || true)"
+          if ! printf '%s\n' "$labels" | rg -F -q -x "$PROTECTED_LABEL"; then
+            echo "Issue #$issue is not labeled '$PROTECTED_LABEL'; skipping."
+            exit 0
+          fi
+
+          if is_exempt "$login"; then
+            echo "$login is the owner or a collaborator; skipping."
+            exit 0
+          fi
+
+          if is_first_time "$login"; then
+            marker="<!-- gfi-welcome:$issue:$login -->"
+            bodies="$(gh api "repos/$REPO/issues/$issue/comments" --paginate --jq '.[].body' 2>/dev/null || true)"
+            if printf '%s\n' "$bodies" | rg -F -q "$marker"; then
+              echo "Welcome comment already posted for $login."
+            else
+              body="Hi @$login, welcome to the project! **$PROTECTED_LABEL** issues are reserved for first-time contributors, and you have just claimed one.
+
+              Thanks for picking this up - check CONTRIBUTING.md and feel free to ask questions on the issue.
+              $marker"
+              gh issue comment "$issue" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+              echo "Posted welcome comment for $login."
+            fi
+            exit 0
+          fi
+
+          echo "$login is an experienced contributor; enforcing policy on #$issue."
+          gh api -X DELETE "repos/$REPO/issues/$issue/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
+          body="Hi @$login, **$PROTECTED_LABEL** issues are reserved for first-time contributors to this repo, so you have been unassigned from #$issue.
+
+          Please take a look at the **$REDIRECT_LABEL** label instead, which is open to everyone: $REDIRECT_URL"
+          gh issue comment "$issue" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+          close_linked_prs "$issue" "$login"
+          echo "Done."
+
+  pr-claim:
+    name: Enforce good-first-issue on PR claims
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target' && (github.event.action == 'opened' || github.event.action == 'reopened')
+    concurrency:
+      group: gfi-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check PR claim refs against good-first-issue policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: |
+          set -u
+
+          PROTECTED_LABEL="good first issue"
+          REPO="${GH_REPO:-}"
+          pr="${PR_NUM:-}"
+          login="${PR_AUTHOR:-}"
+          association="${PR_ASSOCIATION:-}"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          [ -n "$pr" ] && [ -n "$login" ] || { echo "Event has no PR or author; skipping."; exit 0; }
+
+          if is_exempt "$login" "$association"; then
+            echo "$login is the owner or a collaborator; skipping."
+            exit 0
+          fi
+
+          body="$(gh pr view "$pr" --repo "$REPO" --json body --jq .body 2>/dev/null || true)"
+          refs="$(printf '%s' "$body" | rg -io '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#\d+' || true)"
+          nums="$(printf '%s' "$refs" | rg -o '#[0-9]+' | tr -d '#' | sort -u)"
+
+          if [ -z "$nums" ]; then
+            echo "PR #$pr does not claim any issue; skipping."
+            exit 0
+          fi
+
+          printf '%s\n' "$nums" | while read -r num; do
+            [ -n "$num" ] || continue
+            labels="$(gh api "repos/$REPO/issues/$num" --jq '.labels[].name' 2>/dev/null || true)"
+            if ! printf '%s\n' "$labels" | rg -F -q -x "$PROTECTED_LABEL"; then
+              echo "PR #$pr references #$num which is not a '$PROTECTED_LABEL' issue."
+              continue
+            fi
+            if is_first_time "$login"; then
+              echo "$login is a first-time contributor; PR #$pr may claim good-first-issue #$num."
+            else
+              echo "$login is experienced; closing PR #$pr (claims good-first-issue #$num)."
+              gh pr close "$pr" --repo "$REPO" --comment "Hi @$login, #$num is a **$PROTECTED_LABEL** issue, which this repo reserves for first-time contributors. Please look for the **help wanted** label instead, which is open to everyone: https://github.com/$REPO/issues?q=label:%22help+wanted%22" >/dev/null 2>&1 || true
+            fi
+            break
+          done
+          echo "Done."
+
+  sweep:
+    name: Periodic sweep of good-first-issue assignments
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    concurrency:
+      group: gfi-sweep
+      cancel-in-progress: false
+    steps:
+      - name: Re-check good-first-issue assignments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -u
+
+          PROTECTED_LABEL="good first issue"
+          REDIRECT_LABEL="help wanted"
+          REPO="${GH_REPO:-}"
+          REDIRECT_URL="https://github.com/$REPO/issues?q=label:%22$(printf '%s' "$REDIRECT_LABEL" | sed 's/ /+/g')%22"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          close_linked_prs() {
+            local issue="$1" login="$2" prs
+            prs="$(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq '.[] | select(.event == "cross-referenced") | .source.issue | select(.pull_request != null) | [.number, .user.login] | @tsv' 2>/dev/null || true)"
+            printf '%s\n' "$prs" | while IFS=$'\t' read -r pr auth; do
+              [ -n "$pr" ] || continue
+              [ "$auth" = "$login" ] || continue
+              gh pr close "$pr" --repo "$REPO" --comment "This PR references #$issue, a **$PROTECTED_LABEL** issue. This repo reserves **$PROTECTED_LABEL** issues for first-time contributors, so the PR is closed." >/dev/null 2>&1 || true
+            done
+          }
+
+          rows="$(gh issue list --repo "$REPO" --state open --label "$PROTECTED_LABEL" --json number,assignees --jq '.[] | [.number, ([.assignees[].login] | join(","))] | @tsv' 2>/dev/null || true)"
+
+          if [ -z "$rows" ]; then
+            echo "No open '$PROTECTED_LABEL' issues; nothing to sweep."
+            exit 0
+          fi
+
+          printf '%s\n' "$rows" | while IFS=$'\t' read -r num assignee_list; do
+            [ -n "$num" ] || continue
+            [ -n "$assignee_list" ] || continue
+            IFS=',' read -r -a assignees <<< "$assignee_list"
+            for login in "${assignees[@]}"; do
+              [ -n "$login" ] || continue
+              if is_exempt "$login"; then continue; fi
+              if is_first_time "$login"; then continue; fi
+              echo "Sweep: $login is an experienced contributor assigned to good-first-issue #$num."
+              gh api -X DELETE "repos/$REPO/issues/$num/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
+              body="Hi @$login, **$PROTECTED_LABEL** issues are reserved for first-time contributors to this repo, so you have been unassigned from #$num.
+
+              Please take a look at the **$REDIRECT_LABEL** label instead, which is open to everyone: $REDIRECT_URL"
+              gh issue comment "$num" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+              close_linked_prs "$num" "$login"
+            done
+          done
+          echo "Sweep complete."
