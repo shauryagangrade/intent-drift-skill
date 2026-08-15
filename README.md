@@ -96,6 +96,7 @@ Recommendation: Pause and confirm alignment before continuing
 intent-drift/
 ├── __init__.py              # Skill entrypoint
 ├── analyzer.py              # Core analysis logic
+├── config.py                # Config loading (defaults.yaml + user.yaml merge)
 ├── providers/               # Evidence providers
 ├── exporters/               # Report exporters (text, markdown, json)
 ├── config/                  # Configuration defaults

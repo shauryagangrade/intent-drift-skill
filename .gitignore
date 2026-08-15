@@ -13,3 +13,6 @@ htmlcov/
 .coverage
 .coverage.*
 *.tgz
+
+# Per-invocation user config (merged over config/defaults.yaml)
+config/user.yaml

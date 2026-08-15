@@ -129,8 +129,14 @@ class MarkdownExporter(BaseExporter):
 class JSONExporter(BaseExporter):
     """Exports reports as JSON."""
 
-    def export(self, report: AlignmentReport) -> str:
-        """Export report as JSON."""
+    def export(self, report: AlignmentReport, include_metadata: bool = True) -> str:
+        """Export report as JSON.
+
+        Args:
+            report: The alignment report to export
+            include_metadata: When False, omit the ``generated_at`` timestamp
+                (used to honor ``export.include_metadata: false``)
+        """
         # Convert to dict for JSON serialization
         report_dict = {
             "overall_alignment": report.overall_alignment,
@@ -153,8 +159,9 @@ class JSONExporter(BaseExporter):
                 for name, comp in report.breakdown.items()
             },
             "timeline": report.timeline,
-            "generated_at": datetime.now().isoformat(),
         }
+        if include_metadata:
+            report_dict["generated_at"] = datetime.now().isoformat()
         return json.dumps(
             report_dict, indent=2, default=lambda o: vars(o) if hasattr(o, "__dict__") else str(o)
         )
