@@ -94,7 +94,7 @@ jobs:
           match_reserved_label() {
             local labels="$1" l
             for l in "${RESERVED_LABELS[@]}"; do
-              if printf '%s\n' "$labels" | rg -F -q -x "$l"; then
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
                 printf '%s\n' "$l"
                 return 0
               fi
@@ -119,7 +119,7 @@ jobs:
           if is_first_time "$login"; then
             marker="<!-- gfi-welcome:$issue:$login -->"
             bodies="$(gh api "repos/$REPO/issues/$issue/comments" --paginate --jq '.[].body' 2>/dev/null || true)"
-            if printf '%s\n' "$bodies" | rg -F -q "$marker"; then
+            if printf '%s\n' "$bodies" | grep -F -q "$marker"; then
               echo "Welcome comment already posted for $login."
             else
               body="Hi @$login, welcome to the project! **$reserved** issues are reserved for first-time contributors, and you have just claimed one.
@@ -189,7 +189,7 @@ jobs:
           match_reserved_label() {
             local labels="$1" l
             for l in "${RESERVED_LABELS[@]}"; do
-              if printf '%s\n' "$labels" | rg -F -q -x "$l"; then
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
                 printf '%s\n' "$l"
                 return 0
               fi
@@ -205,8 +205,8 @@ jobs:
           fi
 
           body="$(gh pr view "$pr" --repo "$REPO" --json body --jq .body 2>/dev/null || true)"
-          refs="$(printf '%s' "$body" | rg -io '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#\d+' || true)"
-          nums="$(printf '%s' "$refs" | rg -o '#[0-9]+' | tr -d '#' | sort -u)"
+          refs="$(printf '%s' "$body" | grep -Eio '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[[:space:]]+#[0-9]+' || true)"
+          nums="$(printf '%s' "$refs" | grep -Eo '#[0-9]+' | tr -d '#' | sort -u)"
 
           if [ -z "$nums" ]; then
             echo "PR #$pr does not claim any issue; skipping."
@@ -275,7 +275,7 @@ jobs:
           match_reserved_label() {
             local labels="$1" l
             for l in "${RESERVED_LABELS[@]}"; do
-              if printf '%s\n' "$labels" | rg -F -q -x "$l"; then
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
                 printf '%s\n' "$l"
                 return 0
               fi
@@ -302,8 +302,8 @@ jobs:
               if is_exempt "$pr_auth"; then continue; fi
               local body refs nums
               body="$(gh pr view "$pr" --repo "$REPO" --json body --jq .body 2>/dev/null || true)"
-              refs="$(printf '%s' "$body" | rg -io '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#\d+' || true)"
-              nums="$(printf '%s' "$refs" | rg -o '#[0-9]+' | tr -d '#' | sort -u)"
+              refs="$(printf '%s' "$body" | grep -Eio '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[[:space:]]+#[0-9]+' || true)"
+              nums="$(printf '%s' "$refs" | grep -Eo '#[0-9]+' | tr -d '#' | sort -u)"
               [ -n "$nums" ] || continue
               printf '%s\n' "$nums" | while read -r num; do
                 [ -n "$num" ] || continue
@@ -362,7 +362,7 @@ jobs:
                   gh api -X DELETE "repos/$REPO/issues/$num/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
                   marker="<!-- gfi-stale:$num:$login -->"
                   bodies="$(gh api "repos/$REPO/issues/$num/comments" --paginate --jq '.[].body' 2>/dev/null || true)"
-                  if ! printf '%s\n' "$bodies" | rg -F -q "$marker"; then
+                  if ! printf '%s\n' "$bodies" | grep -F -q "$marker"; then
                     body="Hi @$login, you were assigned to #$num (a **$label** issue) but there's been no open PR from you for over ${STALE_DAYS} days, so the issue has been released for other first-time contributors to pick up.
 
                     If you're still working on it, open a draft PR to keep the assignment.
