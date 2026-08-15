@@ -17,10 +17,14 @@ current work has drifted from the user's original goal.
   purpose, recent edits), or infer from git state + recent messages.
 - `--context` / `--auto-context`: execution evidence (edited files, git diff, recent
   commands). With `--auto-context`, collect automatically (see `scripts/collect_context.py`).
-  Auto-collected context is **scrubbed by default**: secret-like content (tokens,
-  `password=`/`api_key=` assignments, `Authorization:` headers, long base64 blobs) is
-  masked before it reaches the analyzer and report exporters. To disable the scrub
-  (not recommended), construct `ContextCollector(sanitize_secrets=False)`.
+  Auto-context is **repo-only by default**: git diff, commits, edited files, and file
+  changes. Your **shell history is never read** unless you pass `--include-shell-history`.
+  That opt-in is deliberate — `.bash_history` / `.zsh_history` can contain credentials
+  typed into a shell and commands unrelated to the current repo, so it stays off unless
+  explicitly requested. Auto-collected context is also **scrubbed by default**: secret-like
+  content (tokens, `password=`/`api_key=` assignments, `Authorization:` headers, long
+  base64 blobs) is masked before it reaches the analyzer and report exporters. To disable
+  the scrub (not recommended), construct `ContextCollector(sanitize_secrets=False)`.
 - `--format` (`text` | `markdown` | `json`): output format.
 - `--threshold` (default 75): minimum alignment % to be considered "on track".
 
@@ -88,6 +92,6 @@ exporters in `exporters/`, and auto context collection in `scripts/collect_conte
 | `analyzer.py` | CLI + `IntentDriftAnalyzer` (parse → analyze → export) |
 | `providers/` | 9 evidence providers + `base.py` |
 | `exporters/` | text / markdown / json report exporters |
-| `scripts/collect_context.py` | Git + shell-history context collection with default-on secret scrubbing |
+| `scripts/collect_context.py` | Repo-only context collection (git diff, commits, edited files, file changes) with default-on secret scrubbing; shell history is opt-in via `--include-shell-history` |
 | `config/defaults.yaml` | Thresholds, weights, enabled providers |
 | `metadata.json` | Importable skill metadata (params, deps) |
