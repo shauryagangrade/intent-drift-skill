@@ -2,6 +2,7 @@
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,6 +10,10 @@ import yaml
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
+
+# History is persisted per analysis; route it to a throwaway location so the
+# unit tests never touch the real ~/.local/share/intent-drift/history.json.
+_TMP_DIR = tempfile.mkdtemp(prefix="intent-drift-test-")
 
 import analyzer as analyzer_mod
 import config as config_mod
@@ -28,6 +33,9 @@ def _base_config():
         "auto_context": False,
         "format": "text",
         "threshold": 75,
+        # History is persisted per analysis; route it away from the real
+        # ~/.local/share/intent-drift/history.json (#20).
+        "history_path": str(Path(_TMP_DIR) / "history.json"),
     }
 
 

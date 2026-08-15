@@ -7,7 +7,7 @@ setup(
     version="1.0.0",
     description="Intent drift analyzer skill for Claude Code agents",
     packages=find_packages(exclude=("tests", "tests.*")),
-    py_modules=["analyzer", "config"],
+    py_modules=["analyzer", "config", "history"],
     python_requires=">=3.10",
     install_requires=[
         "intent-drift>=0.1.0",

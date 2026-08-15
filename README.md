@@ -69,7 +69,21 @@ Set `INTENT_DRIFT_PYTHON` to a specific Python 3.10+ binary if needed.
 --original-goal "Improve response time"
 --current-plan "Add database indexing"
 --auto-context
+
+# Print the score timeline recorded so far (no analysis run)
+/intent-drift --history
+
+# Compare this run against the run 3 analyses ago (trend + drift acceleration)
+/intent-drift
+--original-goal "Improve response time"
+--current-plan "Add database indexing"
+--compare 3
 ```
+
+Every analysis appends its score to `~/.local/share/intent-drift/history.json`
+and seeds the report's `timeline` with the running history, so the
+`--history` / `--compare` views and the timeline sections of the exporters
+reflect the full trend across sessions.
 
 ## 📊 Analysis Output
 
