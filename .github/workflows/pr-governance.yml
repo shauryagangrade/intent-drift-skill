@@ -28,7 +28,7 @@ jobs:
 
           # --- 1. Claimed? PR body must reference a Closes/#NN link ----------
           body="$(gh pr view "$PR_NUMBER" --json body --jq .body || true)"
-          issues="$(printf '%s' "$body" | rg -o "#[0-9]+" | rg -v "^#0$" | sort -u || true)"
+          issues="$(printf '%s' "$body" | grep -oE "#[0-9]+" | grep -vE "^#0$" | sort -u || true)"
           if [ -z "$issues" ]; then
             notes="$notes
             - No issue referenced in the PR body. Claim an issue first and link it with \`Closes #NN\`."
@@ -38,7 +38,7 @@ jobs:
           for n in $issues; do
             num="${n#\#}"
             labels="$(gh issue view "$num" --json labels --jq '[.labels[].name] | join(",")' 2>/dev/null || true)"
-            if printf '%s' "$labels" | rg -q "planned|out-of-scope"; then
+            if printf '%s' "$labels" | grep -qE "planned|out-of-scope"; then
               fail=true
               notes="$notes
               - Links #$num which is labeled [$labels] — PRs against planned/out-of-scope issues are not accepted."
