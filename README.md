@@ -17,7 +17,8 @@ Detects when AI coding agents begin solving a different problem than originally 
 ### What the skill is for (and is not)
 
 - **Evidence over prose:** drift assessments are grounded in real repo state
-  (git diff, edited files, shell history), not just what a plan claims.
+  (git diff, edited files, file changes — and shell history only when you opt
+  in with `--include-shell-history`), not just what a plan claims.
 - **Explainable:** every score traces back to evidence lines a human can verify.
 - **A maintainer tool, not a replacement:** it produces a pause-and-confirm call,
   never an autonomous decision.

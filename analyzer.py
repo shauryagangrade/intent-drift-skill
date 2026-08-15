@@ -32,6 +32,13 @@ Options:
                          Default: "auto".
   --auto-context         Collect execution context automatically via
                          scripts/collect_context.py. Overrides --context.
+                         Repo-only signals (git diff, commits, edited files,
+                         file changes); shell history is NOT read.
+  --include-shell-history
+                         With --auto-context, also read recent shell commands
+                         from ~/.bash_history / ~/.zsh_history / ~/.history.
+                         Opt-in: shell history may contain credentials or
+                         commands unrelated to this repo.
   --format FORMAT        Output format: text | markdown | json. Default: text.
   --threshold N          Minimum alignment % considered "on track" (0-100).
                          Default: 75.
@@ -82,6 +89,7 @@ class IntentDriftAnalyzer:
             "current_plan": "",
             "execution_context": "auto",
             "auto_context": False,
+            "include_shell_history": False,
             "format": "text",
             "threshold": 75,
         }
@@ -130,6 +138,9 @@ class IntentDriftAnalyzer:
             elif arg == "--auto-context":
                 config["auto_context"] = True
                 i += 1
+            elif arg == "--include-shell-history":
+                config["include_shell_history"] = True
+                i += 1
             elif arg.startswith("--"):
                 raise ValueError(f"Unknown option: {arg}")
             else:
@@ -150,15 +161,25 @@ class IntentDriftAnalyzer:
         execution_context = config["execution_context"]
 
         if config["auto_context"]:
-            # Collect auto context from git and file system
+            # Collect auto context from git and file system. Repo-only by
+            # default; shell history is only read on explicit opt-in (#13).
             lookback_hours = (config.get("context_collection") or {}).get("lookback_hours", 24.0)
-            execution_context = self._collect_auto_context(lookback_hours=lookback_hours)
+            execution_context = self._collect_auto_context(
+                include_shell_history=config["include_shell_history"],
+                lookback_hours=lookback_hours,
+            )
+
+        # Providers consume execution_context as a structured dict; a plain
+        # --context string is wrapped in the historical {"text": ...} shape.
+        execution_context_value = (
+            {"text": execution_context} if isinstance(execution_context, str) else execution_context
+        )
 
         # Create alignment context
         context = AlignmentContext(
             original_goal={"text": config["original_goal"]},
             current_plan={"text": config["current_plan"]},
-            execution_context={"text": execution_context},
+            execution_context=execution_context_value,
         )
 
         # Evaluate alignment
@@ -172,12 +193,21 @@ class IntentDriftAnalyzer:
 
         return report
 
-    def _collect_auto_context(self, lookback_hours: float = 24.0) -> str:
-        """Collect execution context from git and recent activities."""
+    def _collect_auto_context(
+        self, include_shell_history: bool = False, lookback_hours: float = 24.0
+    ) -> dict[str, Any]:
+        """Collect execution context from the repo (and optionally shell history).
+
+        Returns the structured dict the providers consume (git_diff,
+        recent_commits, edited_files, recent_commands, file_changes,
+        metadata), with secret-like content scrubbed by default. Shell history
+        is only read when *include_shell_history* is set (#13).
+        """
         from scripts.collect_context import ContextCollector
 
-        collector = ContextCollector(lookback_hours=lookback_hours)
-        return json.dumps(collector.collect_all(), default=str)
+        return ContextCollector(
+            include_shell_history=include_shell_history, lookback_hours=lookback_hours
+        ).collect_all()
 
     @staticmethod
     def _score_of(item: Any) -> tuple[float, float]:

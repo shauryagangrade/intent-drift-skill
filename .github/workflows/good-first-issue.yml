@@ -1,0 +1,384 @@
+# Good-first-issue guard
+#
+# Reserves `good first issue` and `help wanted` issues for first-time
+# contributors:
+#   - an experienced contributor who gets assigned to a protected issue is
+#     unassigned and pointed at non-reserved issues
+#   - a PR by an experienced contributor claiming a protected issue is closed
+#   - a periodic sweep re-checks assignments to catch issues labeled after
+#     they were assigned and unassign/reassign dodging, closes open PRs that
+#     claim protected issues, and releases first-time assignments that have
+#     gone stale (> GFI_STALE_DAYS with no open PR)
+#
+# SECURITY: this workflow listens on `pull_request_target`, which runs with a
+# write-scoped token on fork PRs, so it MUST NEVER `checkout` or execute code
+# from a PR. It only reads issue/PR metadata and writes comments,
+# unassignments and closes, all through `gh`. User-derived values are passed
+# to `gh` via environment variables or as quoted shell arguments -- never
+# string-interpolated into commands -- and every write is guarded with
+# `|| true` so a race (already-closed PR, already-unassigned issue) can't fail
+# the job.
+
+name: Good-first-issue guard
+
+on:
+  issues:
+    types: [assigned]
+  pull_request_target:
+    types: [opened, reopened]
+  schedule:
+    # every 6 hours
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+    # manual run (runs the sweep job; read-only when no protected issues
+    # are assigned to experienced contributors)
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  guard-assignment:
+    name: Enforce good-first-issue on assignment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && github.event.action == 'assigned'
+    concurrency:
+      group: gfi-assign-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check assignee against good-first-issue policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ASSIGNEE: ${{ github.event.assignee.login }}
+        run: |
+          set -u
+
+          RESERVED_LABELS=("good first issue" "help wanted")
+          REPO="${GH_REPO:-}"
+          issue="${ISSUE_NUM:-}"
+          login="${ASSIGNEE:-}"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          close_linked_prs() {
+            local issue="$1" login="$2" rlabel="${3:-reserved}" prs
+            prs="$(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq '.[] | select(.event == "cross-referenced") | .source.issue | select(.pull_request != null) | [.number, .user.login] | @tsv' 2>/dev/null || true)"
+            printf '%s\n' "$prs" | while IFS=$'\t' read -r pr auth; do
+              [ -n "$pr" ] || continue
+              [ "$auth" = "$login" ] || continue
+              gh pr close "$pr" --repo "$REPO" --comment "This PR references #$issue, a **$rlabel** issue. This repo reserves **$rlabel** issues for first-time contributors, so the PR is closed." >/dev/null 2>&1 || true
+            done
+          }
+
+          match_reserved_label() {
+            local labels="$1" l
+            for l in "${RESERVED_LABELS[@]}"; do
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
+                printf '%s\n' "$l"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          [ -n "$issue" ] && [ -n "$login" ] || { echo "Event has no issue or assignee; skipping."; exit 0; }
+
+          labels="$(gh api "repos/$REPO/issues/$issue" --jq '.labels[].name' 2>/dev/null || true)"
+          reserved="$(match_reserved_label "$labels")" || true
+          if [ -z "$reserved" ]; then
+            echo "Issue #$issue has no reserved label; skipping."
+            exit 0
+          fi
+
+          if is_exempt "$login"; then
+            echo "$login is the owner or a collaborator; skipping."
+            exit 0
+          fi
+
+          if is_first_time "$login"; then
+            marker="<!-- gfi-welcome:$issue:$login -->"
+            bodies="$(gh api "repos/$REPO/issues/$issue/comments" --paginate --jq '.[].body' 2>/dev/null || true)"
+            if printf '%s\n' "$bodies" | grep -F -q "$marker"; then
+              echo "Welcome comment already posted for $login."
+            else
+              body="Hi @$login, welcome to the project! **$reserved** issues are reserved for first-time contributors, and you have just claimed one.
+
+              Thanks for picking this up - check CONTRIBUTING.md and feel free to ask questions on the issue.
+              $marker"
+              gh issue comment "$issue" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+              echo "Posted welcome comment for $login."
+            fi
+            exit 0
+          fi
+
+          echo "$login is an experienced contributor; enforcing policy on #$issue."
+          gh api -X DELETE "repos/$REPO/issues/$issue/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
+          body="Hi @$login, **$reserved** issues are reserved for first-time contributors to this repo, so you have been unassigned from #$issue.
+
+          If you'd like to contribute, check CONTRIBUTING.md and pick an issue that isn't reserved for first-time contributors."
+          gh issue comment "$issue" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+          close_linked_prs "$issue" "$login" "$reserved"
+          echo "Done."
+
+  guard-linked-pr:
+    name: Enforce good-first-issue on PR claims
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request_target' && (github.event.action == 'opened' || github.event.action == 'reopened')
+    concurrency:
+      group: gfi-pr-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check PR claim refs against good-first-issue policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: |
+          set -u
+
+          RESERVED_LABELS=("good first issue" "help wanted")
+          REPO="${GH_REPO:-}"
+          pr="${PR_NUM:-}"
+          login="${PR_AUTHOR:-}"
+          association="${PR_ASSOCIATION:-}"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          match_reserved_label() {
+            local labels="$1" l
+            for l in "${RESERVED_LABELS[@]}"; do
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
+                printf '%s\n' "$l"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          [ -n "$pr" ] && [ -n "$login" ] || { echo "Event has no PR or author; skipping."; exit 0; }
+
+          if is_exempt "$login" "$association"; then
+            echo "$login is the owner or a collaborator; skipping."
+            exit 0
+          fi
+
+          body="$(gh pr view "$pr" --repo "$REPO" --json body --jq .body 2>/dev/null || true)"
+          refs="$(printf '%s' "$body" | grep -Eio '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[[:space:]]+#[0-9]+' || true)"
+          nums="$(printf '%s' "$refs" | grep -Eo '#[0-9]+' | tr -d '#' | sort -u)"
+
+          if [ -z "$nums" ]; then
+            echo "PR #$pr does not claim any issue; skipping."
+            exit 0
+          fi
+
+          printf '%s\n' "$nums" | while read -r num; do
+            [ -n "$num" ] || continue
+            labels="$(gh api "repos/$REPO/issues/$num" --jq '.labels[].name' 2>/dev/null || true)"
+            reserved="$(match_reserved_label "$labels")" || true
+            if [ -z "$reserved" ]; then
+              echo "PR #$pr references #$num which has no reserved label."
+              continue
+            fi
+            if is_first_time "$login"; then
+              echo "$login is a first-time contributor; PR #$pr may claim reserved issue #$num."
+            else
+              echo "$login is experienced; closing PR #$pr (claims reserved issue #$num)."
+              gh pr close "$pr" --repo "$REPO" --comment "Hi @$login, #$num is a **$reserved** issue, which this repo reserves for first-time contributors. Please check CONTRIBUTING.md and look for issues that aren't reserved for first-time contributors." >/dev/null 2>&1 || true
+            fi
+            break
+          done
+          echo "Done."
+
+  sweep:
+    name: Periodic sweep of good-first-issue assignments
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: gfi-sweep
+      cancel-in-progress: false
+    steps:
+      - name: Re-check good-first-issue assignments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GFI_STALE_DAYS: ${{ vars.GFI_STALE_DAYS }}
+        run: |
+          set -u
+
+          RESERVED_LABELS=("good first issue" "help wanted")
+          REPO="${GH_REPO:-}"
+          STALE_DAYS="${GFI_STALE_DAYS:-14}"
+
+          is_exempt() {
+            local login="$1" association="${2:-}"
+            [ -n "$login" ] || return 0
+            case "$association" in
+              OWNER|MEMBER|COLLABORATOR) return 0 ;;
+            esac
+            local owner
+            owner="$(gh api "repos/$REPO" --jq .owner.login 2>/dev/null || true)"
+            [ "$login" = "$owner" ] && return 0
+            if gh api "repos/$REPO/collaborators/$login" --silent >/dev/null 2>&1; then
+              return 0
+            fi
+            return 1
+          }
+
+          is_first_time() {
+            local login="$1" merged
+            merged="$(gh pr list --repo "$REPO" --state merged --author "$login" --limit 1 --json number --jq 'length' 2>/dev/null || echo 0)"
+            [ "${merged:-0}" -eq 0 ]
+          }
+
+          match_reserved_label() {
+            local labels="$1" l
+            for l in "${RESERVED_LABELS[@]}"; do
+              if printf '%s\n' "$labels" | grep -F -qx "$l"; then
+                printf '%s\n' "$l"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          close_linked_prs() {
+            local issue="$1" login="$2" rlabel="${3:-reserved}" prs
+            prs="$(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq '.[] | select(.event == "cross-referenced") | .source.issue | select(.pull_request != null) | [.number, .user.login] | @tsv' 2>/dev/null || true)"
+            printf '%s\n' "$prs" | while IFS=$'\t' read -r pr auth; do
+              [ -n "$pr" ] || continue
+              [ "$auth" = "$login" ] || continue
+              gh pr close "$pr" --repo "$REPO" --comment "This PR references #$issue, a **$rlabel** issue. This repo reserves **$rlabel** issues for first-time contributors, so the PR is closed." >/dev/null 2>&1 || true
+            done
+          }
+
+          close_reserved_claims() {
+            local prs
+            prs="$(gh pr list --repo "$REPO" --state open --limit 100 --json number,author --jq '.[] | [.number, .author.login] | @tsv' 2>/dev/null || true)"
+            printf '%s\n' "$prs" | while IFS=$'\t' read -r pr pr_auth; do
+              [ -n "$pr" ] || continue
+              [ -n "$pr_auth" ] || continue
+              if is_exempt "$pr_auth"; then continue; fi
+              local body refs nums
+              body="$(gh pr view "$pr" --repo "$REPO" --json body --jq .body 2>/dev/null || true)"
+              refs="$(printf '%s' "$body" | grep -Eio '(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)[[:space:]]+#[0-9]+' || true)"
+              nums="$(printf '%s' "$refs" | grep -Eo '#[0-9]+' | tr -d '#' | sort -u)"
+              [ -n "$nums" ] || continue
+              printf '%s\n' "$nums" | while read -r num; do
+                [ -n "$num" ] || continue
+                labels="$(gh api "repos/$REPO/issues/$num" --jq '.labels[].name' 2>/dev/null || true)"
+                reserved="$(match_reserved_label "$labels")" || true
+                [ -n "$reserved" ] || continue
+                if is_first_time "$pr_auth"; then continue; fi
+                echo "Sweep: closing PR #$pr (claims reserved issue #$num)."
+                gh pr close "$pr" --repo "$REPO" --comment "Hi @$pr_auth, #$num is a **$reserved** issue, which this repo reserves for first-time contributors. Please check CONTRIBUTING.md and look for issues that aren't reserved for first-time contributors." >/dev/null 2>&1 || true
+                break
+              done
+            done
+          }
+
+          assignment_is_stale() {
+            local issue="$1" login="$2" days="${3:-$STALE_DAYS}" assign_ts cutoff ref state found
+            assign_ts="$(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq ".[] | select(.event == \"assigned\") | select(.assignee.login == \"$login\") | .created_at" 2>/dev/null || true | sort | tail -n 1)"
+            [ -n "$assign_ts" ] || return 1
+            assign_ts="$(date -u -d "$assign_ts" +%s 2>/dev/null || echo 0)"
+            [ "${assign_ts:-0}" -gt 0 ] || return 1
+            cutoff="$(date -u -d "$days days ago" +%s 2>/dev/null || echo 0)"
+            [ "$assign_ts" -lt "$cutoff" ] || return 1
+            found=""
+            while read -r ref; do
+              [ -n "$ref" ] || continue
+              state="$(gh pr view "$ref" --repo "$REPO" --json state --jq .state 2>/dev/null || true)"
+              if [ "$state" = "OPEN" ]; then found="yes"; break; fi
+            done < <(gh api "repos/$REPO/issues/$issue/timeline" --paginate --jq ".[] | select(.event == \"cross-referenced\") | .source.issue | select(.pull_request != null) | select(.user.login == \"$login\") | .number" 2>/dev/null || true)
+            [ -n "$found" ] && return 1
+            return 0
+          }
+
+          close_reserved_claims
+
+          rows="$(
+            for label in "${RESERVED_LABELS[@]}"; do
+              gh issue list --repo "$REPO" --state open --label "$label" --json number,assignees --jq ".[] | [.number, \"$label\", ([.assignees[].login] | join(\",\"))] | @tsv" 2>/dev/null || true
+            done | sort -t "$(printf '\t')" -k1,1 -u
+          )"
+
+          if [ -z "$rows" ]; then
+            echo "No open reserved-label issues; nothing to sweep."
+            exit 0
+          fi
+
+          printf '%s\n' "$rows" | while IFS=$'\t' read -r num label assignee_list; do
+            [ -n "$num" ] || continue
+            [ -n "$assignee_list" ] || continue
+            IFS=',' read -r -a assignees <<< "$assignee_list"
+            for login in "${assignees[@]}"; do
+              [ -n "$login" ] || continue
+              if is_exempt "$login"; then continue; fi
+              if is_first_time "$login"; then
+                if assignment_is_stale "$num" "$login"; then
+                  echo "Sweep: $login has a stale first-time assignment on reserved issue #$num; releasing."
+                  gh api -X DELETE "repos/$REPO/issues/$num/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
+                  marker="<!-- gfi-stale:$num:$login -->"
+                  bodies="$(gh api "repos/$REPO/issues/$num/comments" --paginate --jq '.[].body' 2>/dev/null || true)"
+                  if ! printf '%s\n' "$bodies" | grep -F -q "$marker"; then
+                    body="Hi @$login, you were assigned to #$num (a **$label** issue) but there's been no open PR from you for over ${STALE_DAYS} days, so the issue has been released for other first-time contributors to pick up.
+
+                    If you're still working on it, open a draft PR to keep the assignment.
+                    $marker"
+                    gh issue comment "$num" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+                  fi
+                fi
+                continue
+              fi
+              echo "Sweep: $login is an experienced contributor assigned to reserved issue #$num."
+              gh api -X DELETE "repos/$REPO/issues/$num/assignees" -f "assignees[]=$login" >/dev/null 2>&1 || true
+              body="Hi @$login, **$label** issues are reserved for first-time contributors to this repo, so you have been unassigned from #$num.
+
+              If you'd like to contribute, check CONTRIBUTING.md and pick an issue that isn't reserved for first-time contributors."
+              gh issue comment "$num" --repo "$REPO" --body "$body" >/dev/null 2>&1 || true
+              close_linked_prs "$num" "$login" "$label"
+            done
+          done
+          echo "Sweep complete."
