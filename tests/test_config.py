@@ -3,9 +3,11 @@
 import json
 import sys
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import yaml
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -36,6 +38,59 @@ def _base_config():
         # History is persisted per analysis; route it away from the real
         # ~/.local/share/intent-drift/history.json (#20).
         "history_path": str(Path(_TMP_DIR) / "history.json"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("base", "overlay", "expected"),
+    [
+        # Nested dicts merge recursively; the overlay wins per key while base
+        # keys the overlay doesn't mention survive.
+        (
+            {"analysis": {"threshold": 75, "weights": {"a": 1}}},
+            {"analysis": {"weights": {"b": 2}}},
+            {"analysis": {"threshold": 75, "weights": {"a": 1, "b": 2}}},
+        ),
+        # An overlay list replaces the base list wholesale (no element merge).
+        ({"tags": ["a", "b"]}, {"tags": ["c"]}, {"tags": ["c"]}),
+        # An overlay None replaces the base value; it is not treated as absent.
+        ({"x": 1}, {"x": None}, {"x": None}),
+        # An overlay scalar replaces a nested dict wholesale.
+        ({"x": {"nested": 1}}, {"x": 5}, {"x": 5}),
+        # Base-only keys are preserved.
+        ({"a": 1, "b": 2}, {"a": 9}, {"a": 9, "b": 2}),
+        # An empty overlay is a no-op.
+        ({"a": {"b": 1}}, {}, {"a": {"b": 1}}),
+        # New overlay keys (including new nested subtrees) are added.
+        ({"a": 1}, {"new": {"k": 1}}, {"a": 1, "new": {"k": 1}}),
+    ],
+)
+def test_deep_merge_semantics(base, overlay, expected):
+    """Pin the documented _deep_merge behavior directly (#79)."""
+    assert config_mod._deep_merge(base, overlay) == expected
+
+
+def test_deep_merge_does_not_mutate_inputs():
+    """_deep_merge returns a new dict and never mutates either input (#79)."""
+    base = {
+        "analysis": {"threshold": 75, "weights": {"a": 1}},
+        "tags": ["x"],
+    }
+    overlay = {
+        "analysis": {"threshold": 60, "weights": {"b": 2}},
+        "tags": ["y"],
+    }
+    base_before = deepcopy(base)
+    overlay_before = deepcopy(overlay)
+
+    result = config_mod._deep_merge(base, overlay)
+
+    assert base == base_before
+    assert overlay == overlay_before
+    assert result is not base
+    assert result == {
+        "analysis": {"threshold": 60, "weights": {"a": 1, "b": 2}},
+        "tags": ["y"],
     }
 
 
