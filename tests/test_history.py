@@ -107,8 +107,7 @@ def test_format_compare_clamps_window_to_available_history():
 
 
 def test_format_compare_acceleration():
-    # 90 -> 80 -> 72: the latest step (-8) is steeper than the average (-9/run
-    # over the full window is wrong, so check with a plain 3-point window).
+    # 3 points, --compare 2 spanning both steps: 90 -> 80 -> 72.
     points = [_point(90.0, ts=1700000000), _point(80.0, ts=1700003600), _point(72.0, ts=1700007200)]
     out = history.format_compare(points, 2)
     assert "Drift acceleration" in out

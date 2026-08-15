@@ -97,6 +97,7 @@ class ContextCollector:
         repo_path: Path | None = None,
         lookback_hours: float = 1.0,
         sanitize_secrets: bool = True,
+        include_shell_history: bool = False,
     ):
         """Initialize the context collector.
 
@@ -106,10 +107,15 @@ class ContextCollector:
                 edited files. Defaults to 1 hour.
             sanitize_secrets: Mask secret-like content in collected context
                 (default True; disable with False to keep raw output)
+            include_shell_history: Read ~/.bash_history / ~/.zsh_history /
+                ~/.history into the context. Off by default: shell history can
+                leak credentials and captures commands unrelated to the repo,
+                so auto-context stays repo-only unless the caller opts in.
         """
         self.repo_path = repo_path or Path.cwd()
         self.lookback_seconds = lookback_hours * 3600
         self.sanitize_secrets = sanitize_secrets
+        self.include_shell_history = include_shell_history
 
     def collect_all(self) -> dict[str, Any]:
         """Collect all available context.
@@ -124,8 +130,13 @@ class ContextCollector:
         context["recent_commits"] = self.get_recent_commits()
         context["edited_files"] = self.get_edited_files()
 
-        # Shell command history
-        context["recent_commands"] = self.get_recent_commands()
+        # Shell command history — explicit opt-in only (privacy, #13). Repo-only
+        # signals are collected above; reading the user's history files is the
+        # surprising part and stays off unless include_shell_history is set.
+        if self.include_shell_history:
+            context["recent_commands"] = self.get_recent_commands()
+        else:
+            context["recent_commands"] = []
 
         # File changes
         context["file_changes"] = self.get_file_changes()
