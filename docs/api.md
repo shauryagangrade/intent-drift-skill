@@ -7,7 +7,9 @@ The skill exposes a small Python API and a CLI.
 * `analyze(config: dict) -> AlignmentReport` — build context, run the engine, return a
   report. `config` needs at least `original_goal` and `current_plan`.
 * `export_report(report, format) -> str` — `format` ∈ `{"text","markdown","json"}`.
-* `_collect_auto_context() -> str` — thin wrapper over `ContextCollector`.
+* `_collect_auto_context(include_shell_history=False) -> dict` — collect execution
+  context via `ContextCollector`. Repo-only signals by default; shell history is read
+  only when `include_shell_history=True` (see the privacy note below).
 
 ```python
 from analyzer import IntentDriftAnalyzer
@@ -37,10 +39,24 @@ print(a.export_report(report, "markdown"))
 `collect_all() -> dict` with `git_diff`, `recent_commits`, `edited_files`,
 `recent_commands`, `file_changes`, `metadata`. Used by `--auto-context`.
 
+Constructor: `ContextCollector(repo_path=None, lookback_hours=1.0,
+sanitize_secrets=True, include_shell_history=False)`. `recent_commands` is
+`[]` unless `include_shell_history=True` — reading `~/.bash_history` /
+`~/.zsh_history` / `~/.history` is an explicit opt-in because shell history
+may contain credentials or commands unrelated to the repo. Set
+`sanitize_secrets=False` only if you want raw (unscrubbed) output; not
+recommended.
+
 ## CLI
 ```bash
 python3 ~/.claude/skills/intent-drift/analyzer.py \
   --original-goal "..." --current-plan "..." \
-  [--context "..." | --auto-context] [--format text|markdown|json] [--threshold N]
+  [--context "..." | --auto-context] [--include-shell-history] \
+  [--format text|markdown|json] [--threshold N]
 ```
 Exit code is `1` when alignment < threshold (for use in CI / hooks).
+
+`--auto-context` collects repo-only signals (git diff, commits, edited files,
+file changes). Add `--include-shell-history` to also read the last shell
+commands from the user's history files — opt-in only, because shell history
+may leak credentials and includes commands unrelated to the repo.

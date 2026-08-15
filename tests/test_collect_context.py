@@ -70,7 +70,7 @@ def test_collect_all_sanitizes_git_diff(monkeypatch):
 
 
 def test_collect_all_sanitizes_recent_commands(monkeypatch):
-    c = ContextCollector(repo_path=tmp_path_for())
+    c = ContextCollector(repo_path=tmp_path_for(), include_shell_history=True)
     monkeypatch.setattr(c, "get_git_diff", lambda: "")
     monkeypatch.setattr(c, "get_recent_commits", lambda: [])
     monkeypatch.setattr(c, "get_edited_files", lambda: [])
@@ -81,6 +81,35 @@ def test_collect_all_sanitizes_recent_commands(monkeypatch):
     monkeypatch.setattr(c, "get_timestamp", lambda: "2026-01-01T00:00:00")
     ctx = c.collect_all()
     assert "supersecret123" not in ctx["recent_commands"][0]
+
+
+def test_collect_all_skips_shell_history_by_default(monkeypatch):
+    """collect_all must not read shell history unless explicitly opted in (#13)."""
+    c = ContextCollector(repo_path=tmp_path_for())
+    monkeypatch.setattr(c, "get_git_diff", lambda: "")
+    monkeypatch.setattr(c, "get_recent_commits", lambda: [])
+    monkeypatch.setattr(c, "get_edited_files", lambda: [])
+    monkeypatch.setattr(
+        c,
+        "get_recent_commands",
+        lambda: (_ for _ in ()).throw(AssertionError("shell history must not be read by default")),
+    )
+    monkeypatch.setattr(c, "get_file_changes", lambda: {"added": [], "modified": [], "deleted": []})
+    monkeypatch.setattr(c, "get_timestamp", lambda: "2026-01-01T00:00:00")
+    ctx = c.collect_all()
+    assert ctx["recent_commands"] == []
+
+
+def test_collect_all_includes_shell_history_when_opted_in(monkeypatch):
+    c = ContextCollector(repo_path=tmp_path_for(), include_shell_history=True)
+    monkeypatch.setattr(c, "get_git_diff", lambda: "")
+    monkeypatch.setattr(c, "get_recent_commits", lambda: [])
+    monkeypatch.setattr(c, "get_edited_files", lambda: [])
+    monkeypatch.setattr(c, "get_recent_commands", lambda: ["git status", "npm test"])
+    monkeypatch.setattr(c, "get_file_changes", lambda: {"added": [], "modified": [], "deleted": []})
+    monkeypatch.setattr(c, "get_timestamp", lambda: "2026-01-01T00:00:00")
+    ctx = c.collect_all()
+    assert ctx["recent_commands"] == ["git status", "npm test"]
 
 
 def test_collector_sanitize_disabled_keeps_raw(monkeypatch):

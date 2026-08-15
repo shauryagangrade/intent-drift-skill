@@ -15,6 +15,7 @@ def _base_config():
         "current_plan": "Optimize startup initialization for faster application load.",
         "execution_context": "Edited: main.py, startup.py.",
         "auto_context": False,
+        "include_shell_history": False,
         "format": "text",
         "threshold": 75,
     }
@@ -90,6 +91,66 @@ def test_analyze_returns_report():
     report = a.analyze(_base_config())
     assert hasattr(report, "overall_alignment")
     assert hasattr(report, "status")
+    assert 0 <= report.overall_alignment <= 100
+
+
+def test_parse_arguments_include_shell_history_flag():
+    a = IntentDriftAnalyzer()
+    cfg = a.parse_arguments(["--auto-context", "--include-shell-history"])
+    assert cfg["auto_context"] is True
+    assert cfg["include_shell_history"] is True
+
+    # The flag is off unless explicitly passed.
+    assert a.parse_arguments(["--auto-context"])["include_shell_history"] is False
+
+
+def test_auto_context_default_does_not_read_shell_history(monkeypatch):
+    """analyze(--auto-context) collects repo signals but never shell history (#13)."""
+    from scripts.collect_context import ContextCollector
+
+    def _forbid(*_args, **_kwargs):
+        raise AssertionError("shell history must not be read by default")
+
+    monkeypatch.setattr(ContextCollector, "get_recent_commands", _forbid)
+    a = IntentDriftAnalyzer()
+    cfg = _base_config()
+    cfg["auto_context"] = True
+    report = a.analyze(cfg)
+    assert 0 <= report.overall_alignment <= 100
+
+
+def test_auto_context_opt_in_reads_shell_history(monkeypatch):
+    from scripts.collect_context import ContextCollector
+
+    monkeypatch.setattr(ContextCollector, "get_recent_commands", lambda self: ["pytest"])
+    a = IntentDriftAnalyzer()
+    cfg = _base_config()
+    cfg["auto_context"] = True
+    cfg["include_shell_history"] = True
+    report = a.analyze(cfg)
+    assert 0 <= report.overall_alignment <= 100
+
+
+def test_auto_context_passes_structured_execution_context(monkeypatch):
+    """Providers receive the structured dict (edited_files, recent_commands, ...)."""
+    from scripts.collect_context import ContextCollector
+
+    monkeypatch.setattr(
+        ContextCollector,
+        "collect_all",
+        lambda self: {
+            "git_diff": "",
+            "recent_commits": [],
+            "edited_files": ["main.py"],
+            "recent_commands": [],
+            "file_changes": {"added": [], "modified": [], "deleted": []},
+            "metadata": {"repo_path": "/tmp", "collected_at": "2026-01-01T00:00:00"},
+        },
+    )
+    a = IntentDriftAnalyzer()
+    cfg = _base_config()
+    cfg["auto_context"] = True
+    report = a.analyze(cfg)
     assert 0 <= report.overall_alignment <= 100
 
 
