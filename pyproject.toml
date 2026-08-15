@@ -38,6 +38,7 @@ explicit_package_bases = true
 files = [
     "providers/",
     "analyzer.py",
+    "config.py",
     "scripts/",
     "exporters/",
 ]

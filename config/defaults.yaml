@@ -41,6 +41,6 @@ context_collection:
     git_diff: true
     recent_commits: true
     edited_files: true
-    recent_commands: true
+    recent_commands: false   # Privacy: shell history is opt-in (--include-shell-history)
     file_changes: true
   lookback_hours: 24         # How far back to look for context

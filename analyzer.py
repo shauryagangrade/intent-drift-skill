@@ -3,10 +3,9 @@
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-
-from scripts.collect_context import ContextCollector
 
 try:
     from intent_alignment.engine import IntentAlignmentEngine
@@ -18,6 +17,8 @@ except ImportError:
         sys.path.insert(0, str(engine_path))
     from intent_alignment.engine import IntentAlignmentEngine
     from intent_alignment.models import AlignmentContext, AlignmentReport
+
+from config import effective_config, load_config
 
 USAGE = """intent-drift — analyze intent drift in AI-assisted development
 
@@ -70,8 +71,14 @@ class IntentDriftAnalyzer:
 
     _FORMATS = ("text", "markdown", "json")
 
-    def parse_arguments(self, args: list[str]) -> dict[str, Any]:
+    def parse_arguments(
+        self, args: list[str], defaults: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Parse command line arguments into a configuration dictionary.
+
+        ``defaults`` supplies the starting values (normally the merged
+        ``config/defaults.yaml`` + ``config/user.yaml``), so CLI flags only
+        override configured values instead of hardcoded ones.
 
         Raises ``ValueError`` with a clear message when a value-taking flag is
         missing its value, an unknown flag is passed, or ``--format`` /
@@ -86,6 +93,8 @@ class IntentDriftAnalyzer:
             "format": "text",
             "threshold": 75,
         }
+        if defaults:
+            config.update(defaults)
 
         i = 0
         while i < len(args):
@@ -154,8 +163,10 @@ class IntentDriftAnalyzer:
         if config["auto_context"]:
             # Collect auto context from git and file system. Repo-only by
             # default; shell history is only read on explicit opt-in (#13).
+            lookback_hours = (config.get("context_collection") or {}).get("lookback_hours", 24.0)
             execution_context = self._collect_auto_context(
-                include_shell_history=config["include_shell_history"]
+                include_shell_history=config["include_shell_history"],
+                lookback_hours=lookback_hours,
             )
 
         # Providers consume execution_context as a structured dict; a plain
@@ -182,7 +193,9 @@ class IntentDriftAnalyzer:
 
         return report
 
-    def _collect_auto_context(self, include_shell_history: bool = False) -> dict[str, Any]:
+    def _collect_auto_context(
+        self, include_shell_history: bool = False, lookback_hours: float = 24.0
+    ) -> dict[str, Any]:
         """Collect execution context from the repo (and optionally shell history).
 
         Returns the structured dict the providers consume (git_diff,
@@ -190,7 +203,11 @@ class IntentDriftAnalyzer:
         metadata), with secret-like content scrubbed by default. Shell history
         is only read when *include_shell_history* is set (#13).
         """
-        return ContextCollector(include_shell_history=include_shell_history).collect_all()
+        from scripts.collect_context import ContextCollector
+
+        return ContextCollector(
+            include_shell_history=include_shell_history, lookback_hours=lookback_hours
+        ).collect_all()
 
     @staticmethod
     def _score_of(item: Any) -> tuple[float, float]:
@@ -199,16 +216,21 @@ class IntentDriftAnalyzer:
             return item.score, getattr(item, "weight", 0.0)
         return item.get("score", 0.0), item.get("weight", 0.0)
 
-    def export_report(self, report: AlignmentReport, format: str) -> str:
+    def export_report(
+        self,
+        report: AlignmentReport,
+        format: str,
+        include_metadata: bool = True,
+    ) -> str:
         """Export the analysis report in the specified format."""
         if format == "json":
-            return self._export_json(report)
+            return self._export_json(report, include_metadata=include_metadata)
         elif format == "markdown":
-            return self._export_markdown(report)
+            return self._export_markdown(report, include_metadata=include_metadata)
         else:
-            return self._export_text(report)
+            return self._export_text(report, include_metadata=include_metadata)
 
-    def _export_text(self, report: AlignmentReport) -> str:
+    def _export_text(self, report: AlignmentReport, include_metadata: bool = True) -> str:
         """Export report as formatted text."""
         output = []
         output.append("Intent Alignment Report")
@@ -233,9 +255,12 @@ class IntentDriftAnalyzer:
             sc, _ = self._score_of(score)
             output.append(f"  {name}: {sc:.1f}%")
 
+        if include_metadata:
+            output.append(f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
         return "\n".join(output)
 
-    def _export_markdown(self, report: AlignmentReport) -> str:
+    def _export_markdown(self, report: AlignmentReport, include_metadata: bool = True) -> str:
         """Export report as Markdown."""
         md = []
         md.append("# Intent Alignment Report")
@@ -266,22 +291,32 @@ class IntentDriftAnalyzer:
             sc, _ = self._score_of(score)
             md.append(f"| {name} | {sc:.1f}% |")
 
+        if include_metadata:
+            md.append(f"*Report generated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+
         return "\n".join(md)
 
-    def _export_json(self, report: AlignmentReport) -> str:
+    def _export_json(self, report: AlignmentReport, include_metadata: bool = True) -> str:
         """Export report as JSON via the JSONExporter."""
         from exporters import JSONExporter
 
-        return JSONExporter().export(report)
+        return JSONExporter().export(report, include_metadata=include_metadata)
 
 
 def main() -> None:
     """Main entry point for the skill."""
     parser = IntentDriftAnalyzer()
 
+    # Load config/defaults.yaml + config/user.yaml; CLI flags override below.
+    try:
+        base = effective_config(load_config())
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     # Parse command line arguments
     try:
-        config = parser.parse_arguments(sys.argv[1:])
+        config = parser.parse_arguments(sys.argv[1:], defaults=base)
     except ValueError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(2)
@@ -306,9 +341,18 @@ def main() -> None:
     try:
         report = parser.analyze(config)
 
+        export = config.get("export") or {}
+        include_metadata = bool(export.get("include_metadata", True))
+
         # Export result
-        output = parser.export_report(report, config["format"])
-        print(output)
+        output = parser.export_report(report, config["format"], include_metadata=include_metadata)
+        export_file = export.get("file")
+        if export_file:
+            out_path = Path(export_file)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(output + "\n", encoding="utf-8")
+        else:
+            print(output)
 
         # Exit with error code if low alignment
         if report.overall_alignment < config["threshold"]:
