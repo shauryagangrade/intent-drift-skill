@@ -28,7 +28,7 @@ print(a.export_report(report, "markdown"))
 | `evidence` | list[Evidence] | all evidence items |
 | `risk` | str | risk statement |
 | `recommendation` | str | recommended action |
-| `timeline` | list | (empty in this build) |
+| `timeline` | list | score history; each entry is `{timestamp, score, note}`. Persisted to `~/.local/share/intent-drift/history.json` (or `$XDG_DATA_HOME`) and seeded with the running history on every analysis, so exporters show the trend |
 
 ## `Evidence` (from `intent_alignment.models`)
 `source: str`, `value: float` (0–100), `confidence: float` (0–1), `details: str`.
@@ -41,6 +41,18 @@ print(a.export_report(report, "markdown"))
 ```bash
 python3 ~/.claude/skills/intent-drift/analyzer.py \
   --original-goal "..." --current-plan "..." \
-  [--context "..." | --auto-context] [--format text|markdown|json] [--threshold N]
+  [--context "..." | --auto-context] [--format text|markdown|json] [--threshold N] \
+  [--history] [--compare N]
 ```
 Exit code is `1` when alignment < threshold (for use in CI / hooks).
+
+- `--history` prints the persisted score timeline (no analysis required) and
+exits.
+- `--compare N` prints, after the report, the score trend of this run versus
+the run `N` analyses ago — total delta, per-run rate, a verdict
+(improving / declining / steady), and drift acceleration once enough history
+exists.
+
+History is stored per user in `~/.local/share/intent-drift/history.json`
+(respecting `XDG_DATA_HOME`); every run appends its score so the timeline
+grows across sessions.

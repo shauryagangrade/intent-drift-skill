@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import history
+
 try:
     from intent_alignment.engine import IntentAlignmentEngine
     from intent_alignment.models import AlignmentContext, AlignmentReport
@@ -32,6 +34,9 @@ Options:
   --format FORMAT        Output format: text | markdown | json. Default: text.
   --threshold N          Minimum alignment % considered "on track" (0-100).
                          Default: 75.
+  --history              Print the persisted score timeline and exit.
+  --compare N            After the report, compare this run with the one N
+                         runs ago (trend + drift acceleration). Default: off.
   -h, --help             Show this help screen and exit.
   -V, --version          Show the installed version and exit.
 
@@ -75,6 +80,8 @@ class IntentDriftAnalyzer:
             "auto_context": False,
             "format": "text",
             "threshold": 75,
+            "history": False,
+            "compare": None,
         }
 
         i = 0
@@ -92,6 +99,7 @@ class IntentDriftAnalyzer:
                 "--context",
                 "--format",
                 "--threshold",
+                "--compare",
             ):
                 value = self._next_value(args, i, arg)
                 if arg == "--original-goal":
@@ -108,6 +116,16 @@ class IntentDriftAnalyzer:
                             f"(expected one of {', '.join(self._FORMATS)})"
                         )
                     config["format"] = fmt
+                elif arg == "--compare":
+                    try:
+                        compare = int(value)
+                    except ValueError:
+                        raise ValueError(
+                            f"Invalid value for --compare: {value!r} (expected an integer)"
+                        ) from None
+                    if compare < 1:
+                        raise ValueError("--compare expects a positive integer (1 or more)")
+                    config["compare"] = compare
                 else:
                     try:
                         config["threshold"] = int(value)
@@ -118,6 +136,9 @@ class IntentDriftAnalyzer:
                 i += 2
             elif arg == "--auto-context":
                 config["auto_context"] = True
+                i += 1
+            elif arg == "--history":
+                config["history"] = True
                 i += 1
             elif arg.startswith("--"):
                 raise ValueError(f"Unknown option: {arg}")
@@ -147,10 +168,16 @@ class IntentDriftAnalyzer:
             original_goal={"text": config["original_goal"]},
             current_plan={"text": config["current_plan"]},
             execution_context={"text": execution_context},
-        )
-
-        # Evaluate alignment
+        )  # Evaluate alignment
         report = self.engine.evaluate(context)
+
+        # Seed the report's timeline from the persisted history, then record
+        # this run so the next analysis shows the full trend (see #20).
+        history_path = Path(config.get("history_path") or history.default_history_path())
+        points = history.load_history(history_path)
+        points.append(history.current_point(report))
+        report.timeline = list(points)
+        history.save_history(history_path, points)
 
         # Check threshold
         if report.overall_alignment < config["threshold"]:
@@ -266,6 +293,12 @@ def main() -> None:
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(2)
 
+    # --history only reads the persisted timeline; no analysis is needed.
+    if config["history"]:
+        history_path = Path(config.get("history_path") or history.default_history_path())
+        print(history.format_history(history.load_history(history_path)))
+        sys.exit(0)
+
     # Check for required arguments
     if not config["original_goal"]:
         print("Error: --original-goal argument is required")
@@ -289,6 +322,11 @@ def main() -> None:
         # Export result
         output = parser.export_report(report, config["format"])
         print(output)
+
+        # --compare highlights the score trend against a previous run.
+        if config["compare"]:
+            print()
+            print(history.format_compare(report.timeline, config["compare"]))
 
         # Exit with error code if low alignment
         if report.overall_alignment < config["threshold"]:
