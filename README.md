@@ -4,6 +4,8 @@
 [![Security](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml/badge.svg)](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml)
 [![License](https://img.shields.io/github/license/shauryagangrade/intent-drift-skill)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](setup.py)
+[![PyPI](https://img.shields.io/pypi/v/intent-drift)](https://pypi.org/project/intent-drift/)
+[![Stars](https://img.shields.io/github/stars/shauryagangrade/intent-drift-skill?style=social)](https://github.com/shauryagangrade/intent-drift-skill)
 
 A skill that uses the Intent Alignment Engine to analyze intent drift in AI-assisted development.
 
@@ -32,10 +34,16 @@ change is recorded in [CHANGELOG.md](CHANGELOG.md).
 
 - Evidence-based drift detection using multiple providers
 - Explainable assessments with detailed evidence tracking
-- Real-time monitoring and timeline tracking
+- Timeline tracking across runs with history comparison
 - Pluggable architecture for custom evidence providers
 - Type-safe with comprehensive validation
 - Exportable reports in multiple formats
+
+<p align="center">
+  <img src="docs/media/intent-drift-demo.gif" alt="intent-drift demo" width="80%">
+</p>
+
+> Like it? Leave a ⭐ — it helps others find the project.
 
 ## 🚀 Quick Start
 
@@ -221,6 +229,12 @@ See `CONTRIBUTING.md` for:
 - The contribution flow: claim-before-PR, a 3-PR-per-author cap, maintainer
   sign-off on approach for non-trivial changes, and a `CHANGELOG.md` entry on
   every merged PR
+
+New to the project? Browse the issues tagged [good first issue](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [up for grabs](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22up+for+grabs%22).
+
+<a href="https://github.com/shauryagangrade/intent-drift-skill/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=shauryagangrade/intent-drift-skill"/>
+</a>
 
 ## 📍 Roadmap
 
