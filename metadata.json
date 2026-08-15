@@ -1,5 +1,5 @@
 {
-  "name": "intent-drift",
+  "name": "claude-skill-intent-drift",
   "version": "1.0.0",
   "description": "Analyzes intent drift in AI-assisted development using the Intent Alignment Engine",
   "type": "analysis",

@@ -96,23 +96,32 @@ jobs:
           if missing:
               sys.exit(f"metadata.json is missing required keys: {sorted(missing)}")
 
-          # version must match pyproject.toml
+          # version and name must match pyproject.toml
           try:
               import tomllib
           except ImportError:  # Python < 3.11
               tomllib = None
           if tomllib:
               pyproject = tomllib.loads(Path("pyproject.toml").read_text())
-              declared = pyproject["project"]["version"]
+              declared_version = pyproject["project"]["version"]
+              declared_name = pyproject["project"]["name"]
           else:
-              # Python 3.10 CI matrix: parse the version line without tomllib
-              match = re.search(r'^version = "([^"]+)"',
-                                Path("pyproject.toml").read_text(), re.M)
-              declared = match.group(1) if match else "?"
-          if declared != meta["version"]:
+              # Python 3.10 CI matrix: parse the version and name without tomllib
+              content = Path("pyproject.toml").read_text()
+              v_match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.M)
+              declared_version = v_match.group(1) if v_match else "?"
+              n_match = re.search(r'^name\s*=\s*"([^"]+)"', content, re.M)
+              declared_name = n_match.group(1) if n_match else "?"
+          
+          if declared_version != meta["version"]:
               sys.exit(
-                  f"version mismatch: pyproject.toml={declared} "
+                  f"version mismatch: pyproject.toml={declared_version} "
                   f"metadata.json={meta['version']}"
+              )
+          if declared_name != meta["name"]:
+              sys.exit(
+                  f"name mismatch: pyproject.toml={declared_name} "
+                  f"metadata.json={meta['name']}"
               )
 
           # packaging must reference the published engine, not a local path
