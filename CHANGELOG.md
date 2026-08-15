@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secrets (#31).
 
 ### Changed
+- Package metadata lives in a `[project]` table in `pyproject.toml`; `setup.py`
+  is now a thin shim instead of the source of truth (#41).
+- The skill now requires the `intent_alignment` engine as an installed package —
+  the local-checkout fallback was removed, so no developer path can leak into
+  shipped code (#41).
 - `config/defaults.yaml` and `config/user.yaml` are now loaded and deep-merged
   (precedence: CLI > `user.yaml` > `defaults.yaml` > built-in) with validation;
   `export.file`, `export.include_metadata`, and `context_collection.lookback_hours`
@@ -52,16 +57,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   new `--include-shell-history` flag is passed, and auto-context hands the
   providers the real structured context dict instead of a placeholder string
   (#13).
-- `analyzer.py` imports the `intent_alignment` engine defensively, falling back
-  to a local checkout only when the installed package is missing — no hardcoded
-  developer path in shipped code.
 - Auto context collection now skips heavy/vendored directories and reads only the
   tail of shell-history files, keeping collection fast on large repos (#14, #34).
 - Evidence values are canonicalized to the 0–100 scale used by the rest of the
   engine (#33).
 - Edited-file resolution in `FileGraphProvider` is now repo-root relative (#36).
 
+### Removed
+- Unused `click` and `python-dateutil` dependencies (declared everywhere,
+  imported nowhere) (#41).
+
 ### Fixed
+- Packaging tests run on the full matrix: `tomllib` is Python 3.11+, so tests
+  fall back to a regex parse on 3.10, and all reads are explicit UTF-8 to pass
+  on Windows (#41).
 - The installed wheel now packages `config.py` and `history.py` (they were
   missing from `setup.py`'s `py_modules`), fixing `ModuleNotFoundError` in the
   installed CLI.
