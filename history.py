@@ -11,6 +11,7 @@ show the score trend instead of an empty list.
 
 import json
 import os
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -39,11 +40,26 @@ def load_history(path: Path) -> list[dict[str, Any]]:
 
 
 def save_history(path: Path, points: list[dict[str, Any]]) -> None:
-    """Persist timeline points atomically (write temp file, then rename)."""
+    """Persist timeline points atomically (unique temp file, then rename).
+
+    Concurrent writers never share a temp file: each call creates its own
+    unique temp in the same directory (``tempfile.mkstemp``), writes it, and
+    ``os.replace``s it into place (atomic on POSIX), so a reader only ever
+    sees a complete JSON payload — never a byte-interleaved mix of two
+    writers. The temp file is removed if the write fails (#66).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp")
-    tmp.write_text(json.dumps(points, indent=2))
-    tmp.replace(path)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(points, handle, indent=2)
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
 
 
 def current_point(report: Any, note: str | None = None) -> dict[str, Any]:
