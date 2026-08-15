@@ -38,6 +38,8 @@ def test_load_defaults_reads_packaged_defaults_yaml():
     assert merged["export"]["file"] is None
     assert merged["export"]["include_metadata"] is True
     assert merged["context_collection"]["lookback_hours"] == 24
+    # Privacy: shell history must be off unless the user opts in (#13).
+    assert merged["context_collection"]["methods"]["recent_commands"] is False
 
 
 def test_user_yaml_overrides_defaults(tmp_path):

@@ -73,7 +73,7 @@ _BUILTIN_DEFAULTS: dict[str, Any] = {
             "git_diff": True,
             "recent_commits": True,
             "edited_files": True,
-            "recent_commands": True,
+            "recent_commands": False,  # Privacy: shell history is opt-in (#13)
             "file_changes": True,
         },
         "lookback_hours": 24,
