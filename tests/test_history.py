@@ -48,6 +48,22 @@ def test_save_history_creates_parent_dirs_and_round_trips(tmp_path):
     assert not path.with_name("history.json.tmp").exists()
 
 
+def test_save_history_degrades_gracefully_on_write_failure(tmp_path, monkeypatch, capsys):
+    """A failed persist warns to stderr and does not raise (#65)."""
+
+    def fail_write_text(*_args, **_kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(history.Path, "write_text", fail_write_text)
+    path = tmp_path / "history.json"
+
+    history.save_history(path, [_point(80.0)])
+
+    err = capsys.readouterr().err
+    assert "Warning: could not persist history" in err
+    assert not path.exists()
+
+
 def test_current_point_uses_report_score_and_status():
     class FakeReport:
         overall_alignment = 72.5

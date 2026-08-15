@@ -11,6 +11,7 @@ show the score trend instead of an empty list.
 
 import json
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -39,11 +40,24 @@ def load_history(path: Path) -> list[dict[str, Any]]:
 
 
 def save_history(path: Path, points: list[dict[str, Any]]) -> None:
-    """Persist timeline points atomically (write temp file, then rename)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp")
-    tmp.write_text(json.dumps(points, indent=2))
-    tmp.replace(path)
+    """Persist timeline points atomically (write temp file, then rename).
+
+    A failed write (e.g. a read-only HOME in CI, a container, or a mounted
+    read-only volume) degrades gracefully: a warning goes to stderr and the
+    call returns normally, so a perfectly good analysis is never lost just
+    because the timeline could not be persisted (#65).
+    """
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.tmp")
+        tmp.write_text(json.dumps(points, indent=2))
+        tmp.replace(path)
+    except OSError as exc:
+        print(
+            f"Warning: could not persist history to {path} ({exc}); "
+            "continuing without saving this run.",
+            file=sys.stderr,
+        )
 
 
 def current_point(report: Any, note: str | None = None) -> dict[str, Any]:

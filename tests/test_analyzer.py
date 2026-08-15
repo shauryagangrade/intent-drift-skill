@@ -4,6 +4,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
 
@@ -98,6 +100,25 @@ def test_analyze_returns_report():
     assert hasattr(report, "overall_alignment")
     assert hasattr(report, "status")
     assert 0 <= report.overall_alignment <= 100
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX read-only directory semantics")
+def test_analyze_completes_when_history_cannot_be_persisted(tmp_path, capsys):
+    """A read-only history dir must not kill an otherwise good analysis (#65)."""
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o500)  # read-only: the history file cannot be created here
+    cfg = _base_config()
+    cfg["history_path"] = str(locked / "history.json")
+
+    a = IntentDriftAnalyzer()
+    report = a.analyze(cfg)
+
+    assert 0 <= report.overall_alignment <= 100
+    # The report still carries the timeline; only the disk write was skipped.
+    assert report.timeline
+    err = capsys.readouterr().err
+    assert "Warning: could not persist history" in err
 
 
 def test_analyze_seeds_timeline_from_history():

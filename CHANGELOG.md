@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A read-only HOME (CI, container, mounted volume) no longer kills an
+  otherwise good analysis: when the history file cannot be written, the CLI
+  warns on stderr and continues without persisting the run (#65).
+
 ### Added
 - Per-run score history: `--history` and `--compare N` CLI views backed by a
   per-user persisted timeline (`~/.local/share/intent-drift/history.json`,
