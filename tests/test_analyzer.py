@@ -94,7 +94,7 @@ def test_analyze_returns_report():
     assert 0 <= report.overall_alignment <= 100
 
 
-def test_parse_arguments_include_shell_history_flag(monkeypatch):
+def test_parse_arguments_include_shell_history_flag():
     a = IntentDriftAnalyzer()
     cfg = a.parse_arguments(["--auto-context", "--include-shell-history"])
     assert cfg["auto_context"] is True
