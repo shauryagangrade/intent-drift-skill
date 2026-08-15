@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- History persistence is now concurrency-safe: each save uses a unique temp
+  file and an atomic rename, so parallel analyses can no longer corrupt the
+  shared `history.json` or race on a fixed temp name (#66).
+
 ### Added
 - Per-run score history: `--history` and `--compare N` CLI views backed by a
   per-user persisted timeline (`~/.local/share/intent-drift/history.json`,
