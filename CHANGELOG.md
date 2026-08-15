@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Per-run score history: `--history` and `--compare N` CLI views backed by a
+  per-user persisted timeline (`~/.local/share/intent-drift/history.json`,
+  `$XDG_DATA_HOME`-aware) with atomic writes; every analysis seeds
+  `report.timeline` so the exporters render the full trend (#20).
 - Project governance: `ROADMAP.md` as the direction of record (goals, milestones,
   explicit out-of-scope list), a `CHANGELOG.md` every-PR-entry policy, and
   AI-neutral contribution gates (claim-before-PR, 3-PR-per-author cap, maintainer
@@ -37,11 +41,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secrets (#31).
 
 ### Changed
+- `config/defaults.yaml` and `config/user.yaml` are now loaded and deep-merged
+  (precedence: CLI > `user.yaml` > `defaults.yaml` > built-in) with validation;
+  `export.file`, `export.include_metadata`, and `context_collection.lookback_hours`
+  are honored instead of being dead configuration (#11).
+- `parse_arguments` builds on the merged config instead of hardcoded defaults,
+  so `--threshold` / `--format` override the files rather than constants (#11).
+- Shell history is no longer collected by default: `--auto-context` gathers
+  repo-only signals (git diff, commits, edited files, file changes) unless the
+  new `--include-shell-history` flag is passed, and auto-context hands the
+  providers the real structured context dict instead of a placeholder string
+  (#13).
 - `analyzer.py` imports the `intent_alignment` engine defensively, falling back
   to a local checkout only when the installed package is missing — no hardcoded
   developer path in shipped code.
-
-### Changed
 - Auto context collection now skips heavy/vendored directories and reads only the
   tail of shell-history files, keeping collection fast on large repos (#14, #34).
 - Evidence values are canonicalized to the 0–100 scale used by the rest of the
@@ -49,12 +62,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Edited-file resolution in `FileGraphProvider` is now repo-root relative (#36).
 
 ### Fixed
+- The installed wheel now packages `config.py` and `history.py` (they were
+  missing from `setup.py`'s `py_modules`), fixing `ModuleNotFoundError` in the
+  installed CLI.
+- PR-governance and good-first-issue CI checks no longer require ripgrep, which
+  is absent on GitHub-hosted runners (`rg` → `grep`).
 - Clear errors for missing or invalid CLI values (`--format`, `--threshold`,
   unknown flags) instead of silent fallbacks (#37).
 - `install.sh` now works on macOS and never deletes a real directory (#32).
 - Cross-platform test failures on Windows (path separators, `USERPROFILE`) (#34, #35).
 
 ### Security
+- Shell-history collection is opt-in: default runs never read `~/.bash_history` /
+  `~/.zsh_history` / `~/.history`, and `config` defaults (`defaults.yaml`,
+  built-in) set `recent_commands: false` to match (#13).
 - Auto-collected shell history and git context are scrubbed by default before any
   export (#31).
 
