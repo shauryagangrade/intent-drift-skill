@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install intent-drift PyYAML click python-dateutil pytest pytest-cov
+          pip install intent-drift PyYAML pytest pytest-cov
 
       - name: Run tests with coverage
         run: python -m pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=35
@@ -96,18 +96,29 @@ jobs:
           if missing:
               sys.exit(f"metadata.json is missing required keys: {sorted(missing)}")
 
-          # version must match setup.py
-          setup = Path("setup.py").read_text()
-          match = re.search(r'version="([^"]+)"', setup)
-          if not match or match.group(1) != meta["version"]:
+          # version must match pyproject.toml
+          try:
+              import tomllib
+          except ImportError:  # Python < 3.11
+              tomllib = None
+          if tomllib:
+              pyproject = tomllib.loads(Path("pyproject.toml").read_text())
+              declared = pyproject["project"]["version"]
+          else:
+              # Python 3.10 CI matrix: parse the version line without tomllib
+              match = re.search(r'^version = "([^"]+)"',
+                                Path("pyproject.toml").read_text(), re.M)
+              declared = match.group(1) if match else "?"
+          if declared != meta["version"]:
               sys.exit(
-                  f"version mismatch: setup.py={match.group(1) if match else '?'} "
+                  f"version mismatch: pyproject.toml={declared} "
                   f"metadata.json={meta['version']}"
               )
 
           # packaging must reference the published engine, not a local path
-          if "Projects" in setup or "Path.home" in setup:
-              sys.exit("setup.py must not reference machine-local engine paths")
+          for f in ["pyproject.toml", "analyzer.py", "__init__.py"]:
+              if "Projects" in Path(f).read_text() or "Path.home" in Path(f).read_text():
+                  sys.exit(f"{f} must not reference machine-local engine paths")
 
           # the skill's runtime files must exist
           for f in ["analyzer.py", "SKILL.md", "README.md", "LICENSE", "install.sh"]:
@@ -129,7 +140,7 @@ jobs:
           cache: pip
 
       - name: Install engine dependency
-        run: python -m pip install intent-drift PyYAML click python-dateutil
+        run: python -m pip install intent-drift PyYAML
 
       - name: Run install.sh and verify symlink
         run: |

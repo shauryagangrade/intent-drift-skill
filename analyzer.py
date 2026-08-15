@@ -7,19 +7,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from intent_alignment.engine import IntentAlignmentEngine
+from intent_alignment.models import AlignmentContext, AlignmentReport
+
 import history
-
-try:
-    from intent_alignment.engine import IntentAlignmentEngine
-    from intent_alignment.models import AlignmentContext, AlignmentReport
-except ImportError:
-    # Dev fallback: a local checkout of the engine (repo layout only).
-    engine_path = Path.home() / "Projects" / "intent-drift" / "intent-drift"
-    if (engine_path / "intent_alignment").is_dir():
-        sys.path.insert(0, str(engine_path))
-    from intent_alignment.engine import IntentAlignmentEngine
-    from intent_alignment.models import AlignmentContext, AlignmentReport
-
 from config import effective_config, load_config
 
 USAGE = """intent-drift — analyze intent drift in AI-assisted development
