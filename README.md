@@ -4,7 +4,6 @@
 [![Security](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml/badge.svg)](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml)
 [![License](https://img.shields.io/github/license/shauryagangrade/intent-drift-skill)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](setup.py)
-[![PyPI](https://img.shields.io/pypi/v/intent-drift)](https://pypi.org/project/intent-drift/)
 [![Stars](https://img.shields.io/github/stars/shauryagangrade/intent-drift-skill?style=social)](https://github.com/shauryagangrade/intent-drift-skill)
 
 A skill that uses the Intent Alignment Engine to analyze intent drift in AI-assisted development.

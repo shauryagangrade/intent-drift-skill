@@ -63,6 +63,6 @@ confidence from the spread and diversity of evidence. `Status` bands:
 ## Portability
 
 The skill is self-contained under `~/.claude/skills/intent-drift/`. It imports the
-Intent Alignment Engine from the `intent-drift` package on PyPI (declared in
+Intent Alignment Engine from the `intent-drift` package (declared in
 `pyproject.toml` and `metadata.json`, installed by `install.sh`). `metadata.json`
 declares parameters and dependencies so any agent harness can discover and invoke it.

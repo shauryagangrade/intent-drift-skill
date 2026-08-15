@@ -78,7 +78,8 @@ def test_console_script_points_at_importable_main():
 
 
 def test_no_machine_local_engine_path():
-    # The skill must resolve the engine from PyPI, not a ~/Projects checkout.
+    # The skill must resolve the engine from the installed package, not a
+    # ~/Projects checkout.
     for fname in ("analyzer.py", "__init__.py", "pyproject.toml", "setup.py"):
         text = (SKILL_DIR / fname).read_text(encoding="utf-8")
         assert "Projects" not in text, f"{fname} still references a machine-local path"

@@ -4,7 +4,7 @@ A skill that analyzes intent drift in AI-assisted development using the
 Intent Alignment Engine.
 
 This package lives at ~/.claude/skills/intent-drift. The Intent Alignment
-Engine is installed as the `intent-drift` package from PyPI.
+Engine is installed as the `intent-drift` package.
 """
 
 from intent_alignment.engine import IntentAlignmentEngine
