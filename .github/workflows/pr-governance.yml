@@ -54,10 +54,15 @@ jobs:
           fi
 
           if [ -n "$notes" ]; then
-            existing="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
-              --jq '.[] | select(.body | startswith("### Governance checks")) | .id' 2>/dev/null || true)"
-            if [ -z "$existing" ]; then
-              gh pr comment "$PR_NUMBER" --body "### Governance checks$notes"
+            # Only attempt to comment on same-repo PRs; fork PRs lack write access.
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" = "$GH_REPO" ]; then
+              existing="$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/comments" \
+                --jq '.[] | select(.body | startswith("### Governance checks")) | .id' 2>/dev/null || true)"
+              if [ -z "$existing" ]; then
+                gh pr comment "$PR_NUMBER" --body "### Governance checks$notes"
+              fi
+            else
+              echo "::notice::Governance notes (fork PR, comment skipped):$notes"
             fi
           fi
 
