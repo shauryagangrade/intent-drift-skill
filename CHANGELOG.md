@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   file and an atomic rename, so parallel analyses can no longer corrupt the
   shared `history.json` or race on a fixed temp name (#66).
 
+### Fixed
+- Skip concurrency test on Windows where file-locking prevents atomic replace
+  under contention, fixing CI on the Windows matrix (#66).
+
 ### Added
 - Per-run score history: `--history` and `--compare N` CLI views backed by a
   per-user persisted timeline (`~/.local/share/intent-drift/history.json`,

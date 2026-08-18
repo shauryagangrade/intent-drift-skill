@@ -5,6 +5,8 @@ import sys
 import threading
 from pathlib import Path
 
+import pytest
+
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
 
@@ -49,6 +51,7 @@ def test_save_history_creates_parent_dirs_and_round_trips(tmp_path):
     assert not list(tmp_path.glob("a/b/.*.tmp"))
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows file-locking prevents atomic replace under contention")
 def test_save_history_concurrent_writers_never_corrupt_or_except(tmp_path):
     """Concurrent saves stay atomic and leave no temp litter (#66).
 
