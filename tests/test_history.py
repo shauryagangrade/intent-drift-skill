@@ -2,6 +2,7 @@
 
 import json
 import sys
+import threading
 from pathlib import Path
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
@@ -45,7 +46,50 @@ def test_save_history_creates_parent_dirs_and_round_trips(tmp_path):
     history.save_history(path, points)
     assert history.load_history(path) == points
     # The atomic temp file must not be left behind.
-    assert not path.with_name("history.json.tmp").exists()
+    assert not list(tmp_path.glob("a/b/.*.tmp"))
+
+
+def test_save_history_concurrent_writers_never_corrupt_or_except(tmp_path):
+    """Concurrent saves stay atomic and leave no temp litter (#66).
+
+    Two writers persist different point sets to the same file in a tight
+    loop. The old fixed-name temp (``history.json.tmp``) made writers share
+    one file, so bytes could interleave (corrupt JSON) and a ``replace``
+    could hit a temp the other writer already moved (ENOENT). With a unique
+    temp per call plus an atomic ``os.replace``, every observed state is one
+    writer's complete payload: no exception, valid JSON, no stray temp.
+    """
+    path = tmp_path / "history.json"
+    sets = {
+        "a": [_point(80.0, note="a"), _point(79.0, note="a2")],
+        "b": [_point(70.0, note="b"), _point(69.0, note="b2")],
+    }
+
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(2)
+
+    def writer(name: str) -> None:
+        try:
+            barrier.wait()
+            for _ in range(300):
+                history.save_history(path, sets[name])
+        except BaseException as exc:  # pragma: no cover - failure path
+            errors.append(exc)
+
+    threads = [threading.Thread(target=writer, args=(name,)) for name in ("a", "b")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert not errors
+    # The file is always one writer's complete payload, never a byte mix.
+    loaded = history.load_history(path)
+    assert loaded in (sets["a"], sets["b"])
+    # Valid JSON on disk.
+    json.loads(path.read_text())
+    # No temp files were left behind.
+    assert not list(tmp_path.glob(".*.tmp"))
 
 
 def test_current_point_uses_report_score_and_status():
