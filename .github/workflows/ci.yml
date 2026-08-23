@@ -115,6 +115,20 @@ jobs:
                   f"metadata.json={meta['version']}"
               )
 
+          # name must match metadata.json (canonical skill name: intent-drift)
+          if tomllib:
+              declared_name = pyproject["project"]["name"]
+          else:
+              # Python 3.10 CI matrix: parse the name line without tomllib
+              match = re.search(r'^name = "([^"]+)"',
+                                Path("pyproject.toml").read_text(), re.M)
+              declared_name = match.group(1) if match else "?"
+          if declared_name != meta["name"]:
+              sys.exit(
+                  f"name mismatch: pyproject.toml={declared_name} "
+                  f"metadata.json={meta['name']}"
+              )
+
           # packaging must reference the published engine, not a local path
           for f in ["pyproject.toml", "analyzer.py", "__init__.py"]:
               if "Projects" in Path(f).read_text() or "Path.home" in Path(f).read_text():

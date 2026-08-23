@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Canonical skill name decided as `intent-drift`: renamed the pip distribution
+  in `pyproject.toml` from `claude-skill-intent-drift` to match `metadata.json`,
+  `package.json`, and `install.sh`; packaging test updated and CI now enforces
+  name equality between `pyproject.toml` and `metadata.json` (supersedes #93).
+
 ### Added
 - Direct unit tests for `config._deep_merge` semantics: nested-dict overlay,
   wholesale list/scalar/`None` replacement, preserved base keys, and input

@@ -43,7 +43,7 @@ def _pyproject_fallback(text: str) -> dict:
 
 def test_project_metadata_lives_in_pyproject_toml():
     project = _pyproject()["project"]
-    assert project["name"] == "claude-skill-intent-drift"
+    assert project["name"] == "intent-drift"
     assert project["version"] == "1.0.0"
     assert any("intent-drift" in d for d in project["dependencies"])
     assert any("PyYAML" in d for d in project["dependencies"])
