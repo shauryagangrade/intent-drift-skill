@@ -18,10 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Canonical skill name decided as `intent-drift`: renamed the pip distribution
-  in `pyproject.toml` from `claude-skill-intent-drift` to match `metadata.json`,
-  `package.json`, and `install.sh`; packaging test updated and CI now enforces
-  name equality between `pyproject.toml` and `metadata.json` (supersedes #93).
+- Canonical skill name pinned as `intent-drift` (CI now enforces it in
+  `metadata.json`). The pip distribution deliberately stays
+  `claude-skill-intent-drift`: the engine this skill depends on is published on
+  PyPI as `intent-drift`, so an identically named distribution would make pip
+  resolve its own engine dependency and ship a broken wheel. A CI guard now
+  rejects any distribution name that collides with a runtime dependency.
+  Supersedes #93, which proposed aligning in the opposite direction.
 
 ### Added
 - Direct unit tests for `config._deep_merge` semantics: nested-dict overlay,

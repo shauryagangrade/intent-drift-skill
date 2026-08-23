@@ -115,19 +115,23 @@ jobs:
                   f"metadata.json={meta['version']}"
               )
 
-          # name must match metadata.json (canonical skill name: intent-drift)
+          # canonical skill name is pinned: "intent-drift"
+          # (pyproject's dist name is intentionally different — see pyproject.toml)
+          if meta["name"] != "intent-drift":
+              sys.exit(f"metadata.json name must be 'intent-drift', got {meta['name']!r}")
+
           if tomllib:
-              declared_name = pyproject["project"]["name"]
-          else:
-              # Python 3.10 CI matrix: parse the name line without tomllib
-              match = re.search(r'^name = "([^"]+)"',
-                                Path("pyproject.toml").read_text(), re.M)
-              declared_name = match.group(1) if match else "?"
-          if declared_name != meta["name"]:
-              sys.exit(
-                  f"name mismatch: pyproject.toml={declared_name} "
-                  f"metadata.json={meta['name']}"
-              )
+              dist = pyproject["project"]["name"].lower().replace("_", "-")
+              deps = [
+                  re.split(r"[<>=!~\[]", d.strip(), maxsplit=1)[0]
+                  .lower().replace("_", "-")
+                  for d in pyproject["project"].get("dependencies", [])
+              ]
+              if dist in deps:
+                  sys.exit(
+                      f"self-dependency collision: dist '{dist}' also listed in "
+                      f"dependencies; pip would resolve its own engine package"
+                  )
 
           # packaging must reference the published engine, not a local path
           for f in ["pyproject.toml", "analyzer.py", "__init__.py"]:
