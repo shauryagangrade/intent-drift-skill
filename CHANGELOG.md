@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Direct unit tests for `config._deep_merge` semantics: nested-dict overlay,
+  wholesale list/scalar/`None` replacement, preserved base keys, and input
+  immutability (#79).
 - Per-run score history: `--history` and `--compare N` CLI views backed by a
   per-user persisted timeline (`~/.local/share/intent-drift/history.json`,
   `$XDG_DATA_HOME`-aware) with atomic writes; every analysis seeds
