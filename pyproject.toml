@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 # package this skill depends on (provides intent_alignment); a matching dist
 # name would make pip resolve its own engine dependency. Canonical SKILL name
 # stays "intent-drift" (metadata.json / package.json / install.sh).
-name = "claude-skill-intent-drift"
+name = "intent-drift-skill"
 version = "1.0.0"
 description = "Intent drift analyzer skill for Claude Code agents"
 requires-python = ">=3.10"

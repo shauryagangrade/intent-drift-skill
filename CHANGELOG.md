@@ -19,10 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Canonical skill name pinned as `intent-drift` (CI now enforces it in
-  `metadata.json`). The pip distribution deliberately stays
-  `claude-skill-intent-drift`: the engine this skill depends on is published on
-  PyPI as `intent-drift`, so an identically named distribution would make pip
-  resolve its own engine dependency and ship a broken wheel. A CI guard now
+  `metadata.json`). The pip distribution must not share that name: the engine
+  this skill depends on is published on PyPI as `intent-drift`, so an
+  identically named distribution would make pip resolve its own engine
+  dependency and ship a broken wheel. The dist is therefore renamed to
+  `intent-drift-skill` (from `claude-skill-intent-drift`), and a CI guard
   rejects any distribution name that collides with a runtime dependency.
   Supersedes #93, which proposed aligning in the opposite direction.
 
