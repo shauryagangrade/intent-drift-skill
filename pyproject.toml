@@ -3,6 +3,10 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
+# NOTE: deliberately NOT "intent-drift" — that name is the published engine
+# package this skill depends on (provides intent_alignment); a matching dist
+# name would make pip resolve its own engine dependency. Canonical SKILL name
+# stays "intent-drift" (metadata.json / package.json / install.sh).
 name = "claude-skill-intent-drift"
 version = "1.0.0"
 description = "Intent drift analyzer skill for Claude Code agents"

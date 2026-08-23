@@ -115,6 +115,24 @@ jobs:
                   f"metadata.json={meta['version']}"
               )
 
+          # canonical skill name is pinned: "intent-drift"
+          # (pyproject's dist name is intentionally different — see pyproject.toml)
+          if meta["name"] != "intent-drift":
+              sys.exit(f"metadata.json name must be 'intent-drift', got {meta['name']!r}")
+
+          if tomllib:
+              dist = pyproject["project"]["name"].lower().replace("_", "-")
+              deps = [
+                  re.split(r"[<>=!~\[]", d.strip(), maxsplit=1)[0]
+                  .lower().replace("_", "-")
+                  for d in pyproject["project"].get("dependencies", [])
+              ]
+              if dist in deps:
+                  sys.exit(
+                      f"self-dependency collision: dist '{dist}' also listed in "
+                      f"dependencies; pip would resolve its own engine package"
+                  )
+
           # packaging must reference the published engine, not a local path
           for f in ["pyproject.toml", "analyzer.py", "__init__.py"]:
               if "Projects" in Path(f).read_text() or "Path.home" in Path(f).read_text():
