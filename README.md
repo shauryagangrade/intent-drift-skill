@@ -5,6 +5,12 @@
 [![License](https://img.shields.io/github/license/shauryagangrade/intent-drift-skill)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](setup.py)
 [![Stars](https://img.shields.io/github/stars/shauryagangrade/intent-drift-skill?style=social)](https://github.com/shauryagangrade/intent-drift-skill)
+<p align="center">
+  <a href="docs/media/intent-drift-demo.gif">
+    <img src="docs/media/intent-drift-demo.gif" alt="intent-drift demo" width="80%">
+  </a>
+</p>
+
 
 A skill that uses the Intent Alignment Engine to analyze intent drift in AI-assisted development.
 
@@ -38,9 +44,6 @@ change is recorded in [CHANGELOG.md](CHANGELOG.md).
 - Type-safe with comprehensive validation
 - Exportable reports in multiple formats
 
-<p align="center">
-  <img src="docs/media/intent-drift-demo.gif" alt="intent-drift demo" width="80%">
-</p>
 
 > Like it? Leave a ⭐ — it helps others find the project.
 

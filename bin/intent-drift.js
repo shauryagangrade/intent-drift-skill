@@ -96,7 +96,7 @@ function ensureVenv(basePython) {
     }
     const install = spawnSync(
       py,
-      ["-m", "pip", "install", "--quiet", "--disable-pip-version-check", "intent-drift"],
+      ["-m", "pip", "install", "--quiet", "--disable-pip-version-check", "intent-drift", "PyYAML"],
       { stdio: "inherit" }
     );
     if (install.status !== 0) {
