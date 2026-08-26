@@ -11,6 +11,7 @@
     "analyzer.py",
     "__init__.py",
     "history.py",
+    "config.py",
     "providers",
     "exporters",
     "config",
