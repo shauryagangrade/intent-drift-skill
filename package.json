@@ -10,6 +10,7 @@
   "files": [
     "analyzer.py",
     "__init__.py",
+    "history.py",
     "providers",
     "exporters",
     "config",
