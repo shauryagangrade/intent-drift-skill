@@ -1,6 +1,6 @@
 {
   "name": "intent-drift",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Detect intent drift in AI-assisted development — does the current work still match the original goal?",
   "license": "MIT",
   "author": "Shaurya Gangrade",
