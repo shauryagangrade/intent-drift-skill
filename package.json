@@ -31,6 +31,20 @@
     "alignment",
     "skill"
   ],
+  "peerDependencies": {
+    "intent-drift": ">=1.0.0",
+    "pyyaml": ">=6.0"
+  },
+  "peerDependenciesMeta": {
+    "intent-drift": {
+      "description": "Python package — installed automatically into a venv on first run via pip",
+      "optional": true
+    },
+    "pyyaml": {
+      "description": "Python package — installed automatically into a venv on first run via pip",
+      "optional": true
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/shauryagangrade/intent-drift-skill.git"
