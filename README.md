@@ -1,5 +1,6 @@
 # intent-drift
 
+[![npm](https://img.shields.io/npm/v/intent-drift)](https://www.npmjs.com/package/intent-drift)
 [![CI](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/ci.yml)
 [![Security](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml/badge.svg)](https://github.com/shauryagangrade/intent-drift-skill/actions/workflows/security.yml)
 [![License](https://img.shields.io/github/license/shauryagangrade/intent-drift-skill)](LICENSE)
