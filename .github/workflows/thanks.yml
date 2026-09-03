@@ -1,7 +1,9 @@
-name: Thank merged PR contributors
+name: Thank contributors
 on:
   pull_request:
     types: [closed]
+permissions:
+  issues: write
 
 jobs:
   thank:
