@@ -1,7 +1,8 @@
-name: Thank contributors
+name: Thank merged PR contributors
 on:
   pull_request:
     types: [closed]
+
 jobs:
   thank:
     if: github.event.pull_request.merged
