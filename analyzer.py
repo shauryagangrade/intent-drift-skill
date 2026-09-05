@@ -187,10 +187,22 @@ class IntentDriftAnalyzer:
             {"text": execution_context} if isinstance(execution_context, str) else execution_context
         )
 
-        # Create alignment context
+        # Create alignment context. The engine's providers read goal text from
+        # "text"/"goal" and plan text from "summary"/"plan", so the CLI's plain
+        # {"text": ...} values are mirrored under the canonical keys (plus the
+        # "steps" list the skill-local providers expect).
         context = AlignmentContext(
-            original_goal={"text": config["original_goal"]},
-            current_plan={"text": config["current_plan"]},
+            original_goal={
+                "text": config["original_goal"],
+                "goal": config["original_goal"],
+                "summary": config["original_goal"],
+            },
+            current_plan={
+                "text": config["current_plan"],
+                "plan": config["current_plan"],
+                "summary": config["current_plan"],
+                "steps": [config["current_plan"]],
+            },
             execution_context=execution_context_value,
         )
 
