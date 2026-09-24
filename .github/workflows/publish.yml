@@ -18,8 +18,9 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
-      - run: npm ci
-
+      # This package has no dependencies to install (it's a pure `bin` wrapper
+      # that bootstraps Python at runtime), so publish straight from the
+      # checkout. npm ci would require a package-lock.json that doesn't exist.
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
