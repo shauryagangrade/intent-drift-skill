@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- History persistence is now concurrency-safe: each save creates its own
+  unique temp file and renames it into place, so parallel analyses can no
+  longer corrupt the shared `history.json` or race on a fixed temp name (#66).
 - Canonical skill name pinned as `intent-drift` (CI now enforces it in
   `metadata.json`). The pip distribution must not share that name: the engine
   this skill depends on is published on PyPI as `intent-drift`, so an
