@@ -233,7 +233,7 @@ See `CONTRIBUTING.md` for:
   sign-off on approach for non-trivial changes, and a `CHANGELOG.md` entry on
   every merged PR
 
-New to the project? Browse the issues tagged [good first issue](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [up for grabs](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22up+for+grabs%22).
+New to the project? Browse the issues tagged [good first issue](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [up for grabs](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22up+for+grabs%22). Each scoped task includes a `Verify` command — the exact test run that proves it's done.
 
 <a href="https://github.com/shauryagangrade/intent-drift-skill/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=shauryagangrade/intent-drift-skill"/>

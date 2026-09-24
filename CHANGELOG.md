@@ -19,19 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-09-24
 
-### Changed
-- History persistence is now concurrency-safe: each save creates its own
-  unique temp file and renames it into place, so parallel analyses can no
-  longer corrupt the shared `history.json` or race on a fixed temp name (#66).
-- Canonical skill name pinned as `intent-drift` (CI now enforces it in
-  `metadata.json`). The pip distribution must not share that name: the engine
-  this skill depends on is published on PyPI as `intent-drift`, so an
-  identically named distribution would make pip resolve its own engine
-  dependency and ship a broken wheel. The dist is therefore renamed to
-  `intent-drift-skill` (from `claude-skill-intent-drift`), and a CI guard
-  rejects any distribution name that collides with a runtime dependency.
-  Supersedes #93, which proposed aligning in the opposite direction.
-
 ### Added
 - Direct unit tests for `config._deep_merge` semantics: nested-dict overlay,
   wholesale list/scalar/`None` replacement, preserved base keys, and input
@@ -59,6 +46,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secrets (#31).
 
 ### Changed
+- History persistence is now concurrency-safe: each save creates its own
+  unique temp file and renames it into place, so parallel analyses can no
+  longer corrupt the shared `history.json` or race on a fixed temp name (#66).
+- Canonical skill name pinned as `intent-drift` (CI now enforces it in
+  `metadata.json`). The pip distribution must not share that name: the engine
+  this skill depends on is published on PyPI as `intent-drift`, so an
+  identically named distribution would make pip resolve its own engine
+  dependency and ship a broken wheel. The dist is therefore renamed to
+  `intent-drift-skill` (from `claude-skill-intent-drift`), and a CI guard
+  rejects any distribution name that collides with a runtime dependency.
+  Supersedes #93, which proposed aligning in the opposite direction.
 - Package metadata lives in a `[project]` table in `pyproject.toml`; `setup.py`
   is now a thin shim instead of the source of truth (#41).
 - The skill now requires the `intent_alignment` engine as an installed package —

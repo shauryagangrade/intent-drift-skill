@@ -1,3 +1,8 @@
+# npm-only by design. PyPI publication of intent-drift-skill was removed in
+# 4aad237: trusted-publisher OIDC was never configured on the PyPI project, so
+# every release-tag publish failed at the token exchange. The engine ships via
+# `npx intent-drift`, which installs it from PyPI on first run; this repo's own
+# dist intentionally stays off PyPI so it cannot shadow the engine's name.
 name: Publish to npm
 
 on:
