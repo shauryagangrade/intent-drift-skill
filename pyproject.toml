@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 # name would make pip resolve its own engine dependency. Canonical SKILL name
 # stays "intent-drift" (metadata.json / package.json / install.sh).
 name = "intent-drift-skill"
-version = "1.0.0"
+version = "1.1.0"
 description = "Intent drift analyzer skill for Claude Code agents"
 license = "Apache-2.0"
 requires-python = ">=3.10"

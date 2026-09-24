@@ -1,6 +1,6 @@
 {
   "name": "intent-drift",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Analyzes intent drift in AI-assisted development using the Intent Alignment Engine",
   "type": "analysis",
   "category": "code-quality",

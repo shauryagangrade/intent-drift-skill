@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-24
+
 ### Changed
 - History persistence is now concurrency-safe: each save creates its own
   unique temp file and renames it into place, so parallel analyses can no
