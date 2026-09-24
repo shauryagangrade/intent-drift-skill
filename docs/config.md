@@ -30,6 +30,10 @@ context_collection:
     recent_commands: true
     file_changes: true
   lookback_hours: 24
+
+history:
+  history_path: null         # null → $XDG_DATA_HOME/intent-drift/history.json
+                             # (or ~/.local/share/intent-drift/history.json)
 ```
 
 ## CLI overrides
@@ -40,6 +44,7 @@ context_collection:
 | `--format F` | `export.default_format` | text/markdown/json |
 | `--auto-context` | `context_collection.auto_enabled` | runs `ContextCollector` |
 | `--context "..."` | `execution_context` | manual evidence string |
+| `--history` | reads `history.history_path` | prints the persisted timeline |
 
 ## Per-invocation config
 

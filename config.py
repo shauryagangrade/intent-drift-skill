@@ -78,6 +78,10 @@ _BUILTIN_DEFAULTS: dict[str, Any] = {
         },
         "lookback_hours": 24,
     },
+    "history": {
+        # null → history.default_history_path() ($XDG_DATA_HOME-aware)
+        "history_path": None,
+    },
 }
 
 
@@ -156,6 +160,19 @@ def _validate(merged: dict[str, Any], source: str) -> None:
             f"{source}: context_collection.lookback_hours must be a number, got {lookback_hours!r}"
         )
 
+    history = merged.get("history") or {}
+    if not isinstance(history, dict):
+        raise ValueError(
+            f"{source}: history must be a mapping, got {type(history).__name__}"
+        )
+    history_path = history.get("history_path")
+    if history_path is not None:
+        if not isinstance(history_path, str) or not history_path.strip():
+            raise ValueError(
+                f"{source}: history.history_path must be a non-empty string, "
+                f"got {history_path!r}"
+            )
+
 
 def load_config(
     defaults_path: Path | None = None,
@@ -181,14 +198,15 @@ def effective_config(merged: dict[str, Any]) -> dict[str, Any]:
     """Flatten a merged config into the CLI config shape.
 
     The result carries the flat keys ``IntentDriftAnalyzer.parse_arguments``
-    understands (``threshold``, ``format``, ``auto_context``) plus the full
-    ``analysis`` / ``export`` / ``context_collection`` subtrees so callers
-    can honor every setting.
+    understands (``threshold``, ``format``, ``auto_context``, and optionally
+    ``history_path``) plus the full ``analysis`` / ``export`` /
+    ``context_collection`` subtrees so callers can honor every setting.
     """
     analysis = merged.get("analysis") or {}
     export = merged.get("export") or {}
     context = merged.get("context_collection") or {}
-    return {
+    history = merged.get("history") or {}
+    flattened = {
         "threshold": analysis.get("threshold", 75),
         "format": export.get("default_format", "text"),
         "auto_context": bool(context.get("auto_enabled", False)),
@@ -196,3 +214,7 @@ def effective_config(merged: dict[str, Any]) -> dict[str, Any]:
         "export": export,
         "context_collection": context,
     }
+    history_path = history.get("history_path")
+    if history_path:
+        flattened["history_path"] = history_path
+    return flattened

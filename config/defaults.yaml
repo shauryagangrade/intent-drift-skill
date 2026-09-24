@@ -44,3 +44,8 @@ context_collection:
     recent_commands: false   # Privacy: shell history is opt-in (--include-shell-history)
     file_changes: true
   lookback_hours: 24         # How far back to look for context
+
+history:
+  # Path to the persisted score timeline. null uses the XDG-aware default
+  # ($XDG_DATA_HOME/intent-drift/history.json, or ~/.local/share/intent-drift/history.json).
+  history_path: null
