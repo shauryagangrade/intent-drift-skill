@@ -107,8 +107,14 @@ approach with the maintainer before implementing.
   close one before opening another.
 - **No PRs on `planned` or `out-of-scope` issues** (they will be closed without
   review). Prefer the `up for grabs` backlog.
-- Reviews are batched (weekly by default). A PR sitting a few days does not mean
-  it's ignored — maintainer reviews happen on a cadence.
+- **First response within 24–48h** (weekends/holidays excepted): every PR gets a
+  maintainer reply — approval, requested changes, or a clear "needs more
+  grooming" — in that window, then a full review follows promptly. A PR sitting
+  a day or two does not mean it's ignored; reach out in the PR if you've heard
+  nothing after 48h.
+- **Feedback is fast:** CI is a full lint/type/test run, and `python3 -m pytest`
+  runs the whole suite locally in about a second. Green CI on the first push is
+  the single fastest path to a quick merge.
 
 ## Code of Conduct
 
