@@ -11,6 +11,8 @@ show the score trend instead of an empty list.
 
 import json
 import os
+import sys
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -38,12 +40,85 @@ def load_history(path: Path) -> list[dict[str, Any]]:
     return [point for point in data if isinstance(point, dict)]
 
 
+_REPLACE_ATTEMPTS = 5
+_REPLACE_BACKOFF_SECONDS = 0.01
+
+
 def save_history(path: Path, points: list[dict[str, Any]]) -> None:
-    """Persist timeline points atomically (write temp file, then rename)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp")
-    tmp.write_text(json.dumps(points, indent=2))
-    tmp.replace(path)
+    """Persist timeline points atomically (unique temp file, then rename).
+
+    Each call writes to its own ``tempfile.mkstemp`` file in the target's
+    directory, then moves it into place with ``os.replace`` (atomic on
+    POSIX), so concurrent analyses never share a temp file and a reader only
+    ever sees one writer's complete JSON payload (#66).
+
+    A failed persist degrades gracefully: a warning goes to stderr and the
+    call returns normally, so an otherwise good analysis is never lost just
+    because the timeline could not be saved (a read-only HOME in CI, a
+    container, or a mounted read-only volume) (#65).
+    """
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    except OSError as exc:
+        _warn_history_failed(path, exc)
+        return
+
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(points, indent=2))
+    except OSError as exc:
+        _close_fd(fd)
+        _remove_tmp(tmp_name)
+        _warn_history_failed(path, exc)
+        return
+
+    try:
+        _replace_in_place(tmp_name, path)
+    except OSError as exc:
+        _remove_tmp(tmp_name)
+        _warn_history_failed(path, exc)
+
+
+def _replace_in_place(tmp_name: str, path: Path) -> None:
+    """Move the finished temp into place, absorbing transient Windows locks.
+
+    ``os.replace`` is atomic on POSIX, but on Windows a concurrent replace of
+    the same destination briefly holds the file open and can fail with a
+    transient ``PermissionError``. Retrying absorbs that race so concurrent
+    writers still converge on one complete payload; anything still failing
+    surfaces as an ordinary ``OSError``.
+    """
+    for attempt in range(_REPLACE_ATTEMPTS):
+        try:
+            os.replace(tmp_name, path)
+            return
+        except PermissionError:
+            if attempt == _REPLACE_ATTEMPTS - 1:
+                raise
+            time.sleep(_REPLACE_BACKOFF_SECONDS * (attempt + 1))
+
+
+def _warn_history_failed(path: Path, exc: OSError) -> None:
+    print(
+        f"Warning: could not persist history to {path} ({exc}); "
+        "continuing without saving this run.",
+        file=sys.stderr,
+    )
+
+
+def _close_fd(fd: int) -> None:
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
+def _remove_tmp(tmp_name: str) -> None:
+    try:
+        os.unlink(tmp_name)
+    except OSError:
+        pass
 
 
 def current_point(report: Any, note: str | None = None) -> dict[str, Any]:

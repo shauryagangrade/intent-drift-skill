@@ -81,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   imported nowhere) (#41).
 
 ### Fixed
+- A read-only HOME (CI, container, mounted volume) no longer kills an
+  otherwise good analysis: when the history file cannot be written, the CLI
+  warns on stderr and continues without persisting the run (#65).
 - Packaging tests run on the full matrix: `tomllib` is Python 3.11+, so tests
   fall back to a regex parse on 3.10, and all reads are explicit UTF-8 to pass
   on Windows (#41).
