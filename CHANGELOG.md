@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Documented `history.history_path` config key (defaults to the XDG-aware
+  timeline path). Setting it in `user.yaml` relocates `history.json`;
+  `--history` and analysis persistence honor it. Empty or non-string values
+  raise a clear validation error (#57).
+
+
 ## [1.1.0] - 2026-09-24
 
 ### Changed

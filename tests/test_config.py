@@ -306,3 +306,55 @@ def test_main_prints_to_stdout_when_no_export_file(monkeypatch, capsys):
     analyzer_mod.main()
 
     assert capsys.readouterr().out == "report body\n"
+
+
+def test_history_path_from_user_yaml_is_flattened(tmp_path):
+    """history.history_path in user.yaml becomes the flat history_path key (#57)."""
+    defaults = tmp_path / "defaults.yaml"
+    user = tmp_path / "user.yaml"
+    relocated = tmp_path / "elsewhere" / "timeline.json"
+    _write_yaml(defaults, {"analysis": {"threshold": 75}})
+    _write_yaml(user, {"history": {"history_path": str(relocated)}})
+    merged = config_mod.load_config(defaults_path=defaults, user_path=user)
+    assert merged["history"]["history_path"] == str(relocated)
+    flat = config_mod.effective_config(merged)
+    assert flat["history_path"] == str(relocated)
+
+
+def test_null_history_path_does_not_flatten(tmp_path):
+    """A null history.history_path leaves history_path unset so the XDG default applies (#57)."""
+    defaults = tmp_path / "defaults.yaml"
+    _write_yaml(defaults, {"history": {"history_path": None}})
+    merged = config_mod.load_config(defaults_path=defaults)
+    assert merged["history"]["history_path"] is None
+    flat = config_mod.effective_config(merged)
+    assert "history_path" not in flat
+
+
+def test_empty_history_path_raises(tmp_path):
+    defaults = tmp_path / "defaults.yaml"
+    _write_yaml(defaults, {"history": {"history_path": ""}})
+    try:
+        config_mod.load_config(defaults_path=defaults)
+    except ValueError as exc:
+        assert "history.history_path" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for empty history.history_path")
+
+
+def test_non_string_history_path_raises(tmp_path):
+    defaults = tmp_path / "defaults.yaml"
+    _write_yaml(defaults, {"history": {"history_path": 123}})
+    try:
+        config_mod.load_config(defaults_path=defaults)
+    except ValueError as exc:
+        assert "history.history_path" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for non-string history.history_path")
+
+
+def test_packaged_defaults_include_history_section():
+    merged = config_mod.load_config()
+    assert "history" in merged
+    assert merged["history"]["history_path"] is None
+

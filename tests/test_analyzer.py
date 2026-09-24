@@ -9,6 +9,7 @@ import pytest
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
 
+import analyzer as analyzer_mod
 import history
 from analyzer import IntentDriftAnalyzer
 
@@ -300,3 +301,30 @@ def test_parse_arguments_version_prints_and_exits():
     except SystemExit as exc:
         assert exc.code == 0
     assert "intent-drift" in buf.getvalue()
+
+def test_history_flag_reads_configured_history_path(tmp_path, monkeypatch, capsys):
+    """--history must read history.history_path from the merged config (#57)."""
+    relocated = tmp_path / "custom-timeline.json"
+    history.save_history(
+        relocated,
+        [{"timestamp": 1_700_000_000, "score": 81.5, "note": "relocated"}],
+    )
+    monkeypatch.setattr(sys, "argv", ["analyzer.py", "--history"])
+    monkeypatch.setattr(
+        analyzer_mod,
+        "load_config",
+        lambda: {
+            "analysis": {"threshold": 75},
+            "export": {"default_format": "text", "file": None, "include_metadata": True},
+            "context_collection": {"auto_enabled": False, "lookback_hours": 24},
+            "history": {"history_path": str(relocated)},
+        },
+    )
+    try:
+        analyzer_mod.main()
+    except SystemExit as exc:
+        assert exc.code == 0
+    out = capsys.readouterr().out
+    assert "81.5" in out or "81" in out
+    assert "relocated" in out
+
