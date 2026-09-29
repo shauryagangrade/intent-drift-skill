@@ -47,6 +47,15 @@ Cross-references other providers for low semantic similarity, concerning command
 ## Adding a provider
 1. `providers/<name>_provider.py` subclassing `EvidenceProvider`.
 2. Add to `providers/__init__.py`.
-3. Register in `IntentDriftAnalyzer.analyze()` (or the engine if used standalone).
+3. Register it with the engine. `IntentAlignmentEngine.add_provider(instance)`
+   is the public hook; the engine otherwise self-registers its own built-ins
+   from the external `intent-drift` package.
 4. Add a row to `config/defaults.yaml` weights/enabled lists.
 5. Add a unit test under `tests/`.
+
+Note that the engine that scores a run lives in the external `intent-drift`
+package, not in this repo — `analyzer.py` imports
+`intent_alignment.engine` from site-packages. Providers here are the
+skill-local implementations; a new provider that must change the weighted
+score is **core** work, so open an issue and coordinate with the maintainer
+before implementing (see [CONTRIBUTING.md](../CONTRIBUTING.md)).

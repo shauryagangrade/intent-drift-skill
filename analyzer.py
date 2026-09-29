@@ -92,6 +92,11 @@ class IntentDriftAnalyzer:
             "compare": None,
         }
         if defaults:
+            # `defaults` is effective_config(load_config()), so this is also the
+            # only point where a config-file key reaches the analyzer: any flat
+            # key added there (e.g. `history_path`, read back by `analyze()` and
+            # the `--history` branch in main()) is honored purely because it is
+            # merged here. Keep that dependency in mind when adding config keys.
             config.update(defaults)
 
         i = 0

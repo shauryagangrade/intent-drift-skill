@@ -92,9 +92,22 @@ Set `INTENT_DRIFT_PYTHON` to a specific Python 3.10+ binary if needed.
 ```
 
 Every analysis appends its score to `~/.local/share/intent-drift/history.json`
-and seeds the report's `timeline` with the running history, so the
-`--history` / `--compare` views and the timeline sections of the exporters
-reflect the full trend across sessions.
+(or `$XDG_DATA_HOME/intent-drift/history.json`, when that is set) and seeds the
+report's `timeline` with the running history, so the `--history` / `--compare`
+views and the timeline sections of the exporters reflect the full trend across
+sessions.
+
+Relocate that file by setting `history.history_path` in `config/user.yaml`;
+both analysis persistence and `--history` follow it. `~` and environment
+variables are expanded, so use a path like this rather than a relative one:
+
+```yaml
+history:
+  history_path: ~/data/intent-drift-history.json
+```
+
+Leave it unset (or `null`) to keep the XDG-aware default. See
+[docs/config.md](docs/config.md) for the full key reference.
 
 ## 📊 Analysis Output
 

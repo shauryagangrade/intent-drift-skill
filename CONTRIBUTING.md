@@ -53,8 +53,11 @@ pytest tests/
 
 For coverage:
 ```bash
-pytest --cov=intent_drift tests/
+pytest --cov=. tests/
 ```
+
+The tests import modules from the repo root by inserting the skill directory on
+`sys.path`, so no install step is required to run them.
 
 All PRs must pass CI (tests across py3.10–3.12 on Linux/macOS/Windows, lint/format,
 secret scanning).
@@ -65,8 +68,17 @@ secret scanning).
 2. Subclass `EvidenceProvider` from `providers/base.py`
 3. Implement the `collect()` method returning `List[Evidence]`
 4. Add your provider to `providers/__init__.py`
-5. Register it in `src/intent_alignment/engine.py` (in `_register_default_providers()`)
-6. Add tests in `tests/unit/test_providers.py`
+5. Add tests in `tests/test_providers.py`
+
+Note on registration: the engine that consumes these providers is the
+**external** `intent-drift` (PyPI) package, not this repo — `analyzer.py`
+imports `intent_alignment.engine` from site-packages, and that engine
+self-registers its own built-in providers in
+`intent_alignment.evidence.providers`. A provider added here is therefore
+*not* wired into the engine by editing this repo; doing that happens in the
+engine package. If your provider must affect the score, open an issue first
+and coordinate with the maintainer, because the weighted score is computed
+in the engine.
 
 New providers change the weighted score, so they are **core** work: discuss the
 approach with the maintainer before implementing.

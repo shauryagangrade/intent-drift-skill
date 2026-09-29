@@ -9,6 +9,8 @@ import pytest
 SKILL_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SKILL_DIR))
 
+import analyzer as analyzer_mod
+import config as config_mod
 import history
 from analyzer import IntentDriftAnalyzer
 
@@ -300,3 +302,120 @@ def test_parse_arguments_version_prints_and_exits():
     except SystemExit as exc:
         assert exc.code == 0
     assert "intent-drift" in buf.getvalue()
+
+
+def _isolate_history(monkeypatch, tmp_path):
+    """Point the XDG fallback at an empty decoy so a test can never read the
+    developer's real ~/.local/share/intent-drift/history.json (#20, #57)."""
+    decoy = tmp_path / "untouched-default.json"
+    monkeypatch.setattr(history, "default_history_path", lambda: decoy)
+    return decoy
+
+
+def _merged_config_with_history_path(history_path):
+    """The shape effective_config() consumes, with history_path relocated."""
+    return {
+        "analysis": {"threshold": 75},
+        "export": {"default_format": "text", "file": None, "include_metadata": True},
+        "context_collection": {"auto_enabled": False, "lookback_hours": 24},
+        "history": {"history_path": str(history_path)},
+    }
+
+
+def test_history_flag_reads_configured_history_path(tmp_path, monkeypatch, capsys):
+    """--history must read history.history_path from the merged config (#57)."""
+    _isolate_history(monkeypatch, tmp_path)
+    relocated = tmp_path / "custom-timeline.json"
+    history.save_history(
+        relocated,
+        [{"timestamp": 1_700_000_000, "score": 81.5, "note": "relocated"}],
+    )
+    monkeypatch.setattr(sys, "argv", ["analyzer.py", "--history"])
+    monkeypatch.setattr(
+        analyzer_mod,
+        "load_config",
+        lambda: _merged_config_with_history_path(relocated),
+    )
+    with pytest.raises(SystemExit) as exc:
+        analyzer_mod.main()
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "81.5" in out
+    assert "relocated" in out
+    assert "untouched-default" not in out
+
+
+def test_analysis_persists_to_configured_history_path(tmp_path, monkeypatch):
+    """The write path must honor history.history_path, not just --history (#57)."""
+    _isolate_history(monkeypatch, tmp_path)
+    relocated = tmp_path / "written-timeline.json"
+    monkeypatch.setattr(
+        analyzer_mod,
+        "load_config",
+        lambda: _merged_config_with_history_path(relocated),
+    )
+    base = _base_config()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "analyzer.py",
+            "--original-goal",
+            base["original_goal"],
+            "--current-plan",
+            base["current_plan"],
+        ],
+    )
+    monkeypatch.setattr(
+        IntentDriftAnalyzer,
+        "export_report",
+        lambda self, report, format, include_metadata=True: "ok",
+    )
+    analyzer_mod.main()
+
+    assert relocated.exists(), "analysis must append to the configured history_path"
+    assert len(history.load_history(relocated)) == 1
+    assert not (tmp_path / "untouched-default.json").exists()
+
+
+def test_end_to_end_user_yaml_relocates_timeline(tmp_path, monkeypatch, capsys):
+    """A real user.yaml must relocate the timeline and --history must read it (#57)."""
+    _isolate_history(monkeypatch, tmp_path)
+    user_yaml = tmp_path / "user.yaml"
+    relocated = tmp_path / "relocated.json"
+    user_yaml.write_text(f"history:\n  history_path: {relocated}\n", encoding="utf-8")
+
+    # Exercise the real user.yaml -> effective_config -> analyzer chain rather
+    # than a hand-built dict (#57).
+    monkeypatch.setattr(config_mod, "USER_PATH", user_yaml)
+    monkeypatch.setattr(analyzer_mod, "load_config", config_mod.load_config)
+
+    base = _base_config()
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "analyzer.py",
+            "--original-goal",
+            base["original_goal"],
+            "--current-plan",
+            base["current_plan"],
+        ],
+    )
+    monkeypatch.setattr(
+        IntentDriftAnalyzer,
+        "export_report",
+        lambda self, report, format, include_metadata=True: "ok",
+    )
+    analyzer_mod.main()
+
+    assert relocated.exists(), "user.yaml history.history_path must relocate the timeline"
+
+    # --history must then read back from that same relocated file.
+    monkeypatch.setattr(sys, "argv", ["analyzer.py", "--history"])
+    with pytest.raises(SystemExit) as exc:
+        analyzer_mod.main()
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "Intent-drift history (1 run)" in out
+    assert "untouched-default" not in out

@@ -7,6 +7,11 @@ Reports are kept in a per-user JSON file (``~/.local/share/intent-drift/
 history.json`` by default, overridable via ``XDG_DATA_HOME``), and every
 analysis seeds ``report.timeline`` with the stored history so exporters can
 show the score trend instead of an empty list.
+
+The location is also configurable: set ``history.history_path`` in
+``config/user.yaml`` to relocate the timeline, and both analysis persistence
+and ``--history`` read from that path. When it is unset (the default, i.e.
+``null``) the XDG-aware path above applies. See ``docs/config.md``.
 """
 
 import json

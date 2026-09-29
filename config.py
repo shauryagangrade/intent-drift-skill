@@ -16,6 +16,7 @@ can honor every setting.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,10 @@ _BUILTIN_DEFAULTS: dict[str, Any] = {
             "file_changes": True,
         },
         "lookback_hours": 24,
+    },
+    "history": {
+        # null → history.default_history_path() ($XDG_DATA_HOME-aware)
+        "history_path": None,
     },
 }
 
@@ -156,6 +161,22 @@ def _validate(merged: dict[str, Any], source: str) -> None:
             f"{source}: context_collection.lookback_hours must be a number, got {lookback_hours!r}"
         )
 
+    # Use a sentinel-free lookup: `merged.get("history") or {}` would let any
+    # *falsy* non-mapping (`[]`, `0`, `""`, `False`) through the isinstance
+    # check below, silently accepting a malformed config.
+    history = merged.get("history", {})
+    if history is None:
+        history = {}
+    if not isinstance(history, dict):
+        raise ValueError(f"{source}: history must be a mapping, got {type(history).__name__}")
+    history_path = history.get("history_path")
+    if history_path is not None:
+        if not isinstance(history_path, str) or not history_path.strip():
+            raise ValueError(
+                f"{source}: history.history_path must be a non-empty string, "
+                f"got {history_path!r}"
+            )
+
 
 def load_config(
     defaults_path: Path | None = None,
@@ -181,14 +202,18 @@ def effective_config(merged: dict[str, Any]) -> dict[str, Any]:
     """Flatten a merged config into the CLI config shape.
 
     The result carries the flat keys ``IntentDriftAnalyzer.parse_arguments``
-    understands (``threshold``, ``format``, ``auto_context``) plus the full
-    ``analysis`` / ``export`` / ``context_collection`` subtrees so callers
-    can honor every setting.
+    understands (``threshold``, ``format``, ``auto_context``, and optionally
+    ``history_path``) plus the full ``analysis`` / ``export`` /
+    ``context_collection`` subtrees so callers can honor every setting.
     """
     analysis = merged.get("analysis") or {}
     export = merged.get("export") or {}
     context = merged.get("context_collection") or {}
-    return {
+    history = merged.get("history")
+    # Be defensive rather than trusting validation ran: a non-mapping here
+    # would raise AttributeError below instead of degrading to the default.
+    history = history if isinstance(history, dict) else {}
+    flattened = {
         "threshold": analysis.get("threshold", 75),
         "format": export.get("default_format", "text"),
         "auto_context": bool(context.get("auto_enabled", False)),
@@ -196,3 +221,10 @@ def effective_config(merged: dict[str, Any]) -> dict[str, Any]:
         "export": export,
         "context_collection": context,
     }
+    history_path = history.get("history_path")
+    if history_path:
+        # Expand `~` and env vars once, here, so both consumers (analyze()'s
+        # write and main()'s --history read) resolve the same absolute path
+        # rather than each treating the value as cwd-relative.
+        flattened["history_path"] = str(Path(os.path.expandvars(history_path)).expanduser())
+    return flattened
