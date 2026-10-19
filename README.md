@@ -6,6 +6,7 @@
 [![License](https://img.shields.io/github/license/shauryagangrade/intent-drift-skill)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](setup.py)
 [![Stars](https://img.shields.io/github/stars/shauryagangrade/intent-drift-skill?style=social)](https://github.com/shauryagangrade/intent-drift-skill)
+[![Security: A — Skills Directory](https://www.skillsdirectory.com/api/skills/shauryagangrade-intent-drift/badge)](https://www.skillsdirectory.com/skills/shauryagangrade-intent-drift)
 <p align="center">
   <a href="docs/media/intent-drift-demo.gif">
     <img src="docs/media/intent-drift-demo.gif" alt="intent-drift demo" width="80%">
