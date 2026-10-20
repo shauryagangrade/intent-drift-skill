@@ -16,6 +16,8 @@
 
 A skill that uses the Intent Alignment Engine to analyze intent drift in AI-assisted development.
 
+**🌐 Website: [intent-drift.vercel.app](https://intent-drift.vercel.app)** — documentation, feature overview, and real report gallery.
+
 ## 🎯 Purpose
 
 Detects when AI coding agents begin solving a different problem than originally requested by monitoring alignment between:
