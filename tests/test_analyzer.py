@@ -76,6 +76,19 @@ def test_parse_arguments_unknown_flag_raises():
     else:
         raise AssertionError("expected ValueError")
 
+def test_parse_arguments_unexpected_positional_raises():
+    a = IntentDriftAnalyzer()
+    with pytest.raises(ValueError, match="Unexpected positional argument: stray-word"):
+        a.parse_arguments(["stray-word"])
+
+
+def test_parse_arguments_unexpected_positional_suggests_flag():
+    a = IntentDriftAnalyzer()
+    with pytest.raises(ValueError) as exc:
+        a.parse_arguments(["--original-goal", "goal", "original-goal"])
+    assert "did you mean --original-goal" in str(exc.value)
+
+
 
 def test_parse_arguments_invalid_format_raises():
     a = IntentDriftAnalyzer()

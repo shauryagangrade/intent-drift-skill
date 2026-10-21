@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Intent drift analysis skill for Claude Code agents."""
 
+import difflib
 import json
 import sys
 from datetime import datetime
@@ -66,6 +67,31 @@ class IntentDriftAnalyzer:
         self.engine = IntentAlignmentEngine()
 
     _FORMATS = ("text", "markdown", "json")
+    _KNOWN_OPTIONS = (
+        "--original-goal",
+        "--current-plan",
+        "--context",
+        "--format",
+        "--threshold",
+        "--compare",
+        "--auto-context",
+        "--history",
+        "--include-shell-history",
+        "-h",
+        "--help",
+        "-V",
+        "--version",
+    )
+
+    @classmethod
+    def _suggest_option(cls, token: str) -> str:
+        """Find the closest known option for *token*, returning a suggestion string if found."""
+        matches = difflib.get_close_matches(token, cls._KNOWN_OPTIONS, n=1, cutoff=0.6)
+        if not matches and not token.startswith("-"):
+            matches = difflib.get_close_matches(f"--{token}", cls._KNOWN_OPTIONS, n=1, cutoff=0.6)
+        if matches:
+            return f" (did you mean {matches[0]}?)"
+        return ""
 
     def parse_arguments(
         self, args: list[str], defaults: dict[str, Any] | None = None
@@ -77,7 +103,7 @@ class IntentDriftAnalyzer:
         override configured values instead of hardcoded ones.
 
         Raises ``ValueError`` with a clear message when a value-taking flag is
-        missing its value, an unknown flag is passed, or ``--format`` /
+        missing its value, an unknown flag or unexpected positional argument is passed, or ``--format`` /
         ``--threshold`` receive an invalid value.
         """
         config = {
@@ -158,10 +184,12 @@ class IntentDriftAnalyzer:
             elif arg == "--include-shell-history":
                 config["include_shell_history"] = True
                 i += 1
-            elif arg.startswith("--"):
-                raise ValueError(f"Unknown option: {arg}")
+            elif arg.startswith("-"):
+                raise ValueError(f"Unknown option: {arg}{self._suggest_option(arg)}")
             else:
-                i += 1
+                raise ValueError(
+                    f"Unexpected positional argument: {arg}{self._suggest_option(arg)}"
+                )
 
         return config
 
