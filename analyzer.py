@@ -222,10 +222,13 @@ class IntentDriftAnalyzer:
         report.timeline = list(points)
         history.save_history(history_path, points)
 
-        # Check threshold
+        # Check threshold. The warning goes to stderr so stdout carries the
+        # report alone -- a `--format json` run must stay parseable by jq,
+        # json.load and friends.
         if report.overall_alignment < config["threshold"]:
             print(
-                f"Warning: Alignment score {report.overall_alignment}% is below threshold {config['threshold']}%"
+                f"Warning: Alignment score {report.overall_alignment}% is below threshold {config['threshold']}%",
+                file=sys.stderr,
             )
 
         return report

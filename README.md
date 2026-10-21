@@ -251,6 +251,10 @@ See `CONTRIBUTING.md` for:
 
 New to the project? Browse the issues tagged [good first issue](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [up for grabs](https://github.com/shauryagangrade/intent-drift-skill/issues?q=is%3Aissue+is%3Aopen+label%3A%22up+for+grabs%22). Each scoped task includes a `Verify` command — the exact test run that proves it's done.
 
+These reserved labels are first-come, first-served by convention: nothing in CI
+enforces them, so please leave `good first issue` and `help wanted` for people
+making their first contribution here.
+
 <a href="https://github.com/shauryagangrade/intent-drift-skill/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=shauryagangrade/intent-drift-skill"/>
 </a>

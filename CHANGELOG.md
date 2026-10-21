@@ -28,6 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `~/data/history.json` value no longer creates a literal `~` directory in the
   current working directory (#57).
 
+### Removed
+- The `Good-first-issue guard` and `PR governance` workflows. Both duplicated
+  gates a maintainer already applies by hand, and the guard ran on
+  `pull_request_target` for that duplication. The `good first issue` /
+  `help wanted` labels are still reserved by convention (see `README.md`).
+
+### Fixed
+- The below-threshold warning from `analyze()` now goes to stderr instead of
+  stdout. `--format json` previously emitted `Warning: ...` ahead of the JSON
+  object, so the output was unparseable and broke the wheel smoke test in CI.
+
 
 ## [1.1.0] - 2026-09-24
 

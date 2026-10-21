@@ -13,6 +13,7 @@ htmlcov/
 .coverage
 .coverage.*
 *.tgz
+.DS_Store
 
 # Per-invocation user config (merged over config/defaults.yaml)
 config/user.yaml
