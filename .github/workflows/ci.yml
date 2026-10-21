@@ -213,10 +213,26 @@ jobs:
         run: |
           python -m venv /tmp/wheel-venv
           /tmp/wheel-venv/bin/pip install dist/*.whl
+
+          # Kept separate on purpose: stdout must be the report alone. This is
+          # what `--format json | jq` relies on, and the below-threshold warning
+          # goes to stderr precisely so it cannot corrupt the JSON.
+          set +e
           /tmp/wheel-venv/bin/intent-drift \
             --original-goal "reduce memory usage" \
             --current-plan "optimize startup initialization" \
-            --format json > /tmp/report.json 2>&1
+            --format json > /tmp/report.json 2> /tmp/report.err
+          status=$?
+          set -e
+
+          # The CLI exits 1 when alignment is under threshold. That is expected
+          # for this goal/plan pair; any other code is a real failure.
+          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+            echo "intent-drift exited $status"
+            cat /tmp/report.err
+            exit 1
+          fi
+
           python - <<'PY'
           import json
           report = json.load(open("/tmp/report.json"))
